@@ -71,6 +71,9 @@ def test_timeout_status_means_the_mouse_is_asleep() -> None:
         (lambda r: with_status(r, razer.STATUS_FAILURE), "status 0x03"),
         (lambda r: with_status(r, razer.STATUS_NOT_SUPPORTED), "status 0x05"),
         (lambda r: r[:7] + b"\x84" + r[8:], "different command"),
+        (lambda r: r[:1] + b"\x3f" + r[2:], "different command"),
+        # A timeout status on bytes that do not echo this request is not a sleeping mouse.
+        (lambda _r: bytes([razer.STATUS_TIMEOUT]) + bytes(89), "different command"),
         (lambda r: r[:9] + b"\x01" + r[10:], "bad checksum"),
         (lambda r: r[:-1], "expected 90 bytes"),
     ],
@@ -114,7 +117,7 @@ def test_only_interface_zero_of_known_dongles_is_used(tmp_path: Path) -> None:
     make_hidraw(tmp_path, "hidraw5", "0003:00001532:000000C1", "5-2:1.1")
     make_hidraw(tmp_path, "hidraw6", "0003:00001532:000000FF", "5-3:1.0")  # Unknown model.
     make_hidraw(tmp_path, "hidraw7", "0003:000003F0:0000098D", "5-4:1.0")  # Not Razer.
-    assert list(razer.find_control_nodes(tmp_path / "class")) == [("/dev/hidraw4", 0x00C1)]
+    assert list(razer.find_control_nodes(tmp_path / "class")) == [("/dev/hidraw4", 0x00C1, "5-2")]
 
 
 def test_missing_permission_is_reported(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -143,6 +146,28 @@ def test_sleeping_mouse_stays_listed_without_a_level(
     monkeypatch.setattr(razer, "hidraw_transport", lambda _: FakeDongle(timeout, timeout, timeout))
     result = razer.read(tmp_path / "class")
     (device,) = result.devices
-    assert (device.id, device.asleep, device.percent) == ("razer:00c1", True, None)
+    assert (device.id, device.asleep, device.percent) == ("razer:00c1:5-2", True, None)
     assert result.error is None
     assert closed == [42]
+
+
+def test_short_hid_reply_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    request, response = captured("battery")
+    monkeypatch.setattr(razer.time, "sleep", lambda _: None)
+
+    def ioctl(_fd: int, op: int, buffer: bytearray) -> int:
+        if op == razer.HIDIOCSFEATURE:
+            return len(buffer)
+        buffer[1:11] = response[:10]  # The kernel filled only the first ten bytes.
+        return 11
+
+    monkeypatch.setattr(razer.fcntl, "ioctl", ioctl)
+    with pytest.raises(ValueError, match="expected 90 bytes"):
+        razer.parse_response(request, razer.hidraw_transport(3)(request))
+
+
+def test_two_receivers_of_one_model_get_distinct_ids(tmp_path: Path) -> None:
+    make_hidraw(tmp_path, "hidraw4", "0003:00001532:000000C1", "5-2:1.0")
+    make_hidraw(tmp_path, "hidraw9", "0003:00001532:000000C1", "3-1:1.0")
+    ports = [port for _, _, port in razer.find_control_nodes(tmp_path / "class")]
+    assert ports == ["5-2", "3-1"]

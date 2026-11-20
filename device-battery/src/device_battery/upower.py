@@ -26,8 +26,10 @@ _KINDS = {
 _LINE_POWER = 1
 _STATE_CHARGING = 1
 _STATE_PENDING_CHARGE = 5
-# BatteryLevel 1 means "None": the device reports a percentage, not coarse levels.
-_BATTERY_LEVEL_UNKNOWN = 0
+# BatteryLevel 1 means "None": the device reports a real percentage. Any other value is a
+# coarse level (low, normal, full...) for which UPower synthesizes a percentage, so it is not
+# a reading this widget can show as a number.
+_BATTERY_LEVEL_NONE = 1
 
 
 def _value(props: dict[str, Any], key: str, default: Any = None) -> Any:
@@ -46,7 +48,7 @@ def parse_device(path: str, props: dict[str, Any]) -> Device | None:
         return None
     if not _value(props, "IsPresent", default=False):
         return None
-    if _value(props, "BatteryLevel") == _BATTERY_LEVEL_UNKNOWN:
+    if _value(props, "BatteryLevel", default=_BATTERY_LEVEL_NONE) != _BATTERY_LEVEL_NONE:
         return None
     raw = _value(props, "Percentage")
     if not isinstance(raw, int | float):
@@ -77,6 +79,21 @@ def _busctl(binary: str, *arguments: str, timeout: float) -> Any:
     return json.loads(completed.stdout)["data"]
 
 
+def _failure(error: Exception) -> str:
+    if isinstance(error, subprocess.CalledProcessError):
+        return (error.stderr or str(error)).strip()
+    return f"Could not read UPower: {error}"
+
+
+_READ_ERRORS = (
+    subprocess.CalledProcessError,
+    subprocess.TimeoutExpired,
+    ValueError,
+    KeyError,
+    TypeError,
+)
+
+
 def read(timeout: float = 5.0) -> SourceResult:
     binary = shutil.which("busctl")
     if binary is None:
@@ -85,8 +102,17 @@ def read(timeout: float = 5.0) -> SourceResult:
         (paths,) = _busctl(
             binary, *BUS, "org.freedesktop.UPower", "EnumerateDevices", timeout=timeout
         )
-        devices = []
-        for path in paths:
+    except subprocess.CalledProcessError as error:
+        # No UPower daemon is a legitimate setup, not a failure worth surfacing.
+        if "was not provided by any .service files" in (error.stderr or ""):
+            return SourceResult()
+        return SourceResult(error=SourceError(SOURCE, _failure(error)))
+    except _READ_ERRORS as error:
+        return SourceResult(error=SourceError(SOURCE, _failure(error)))
+    devices = []
+    failures = []
+    for path in paths:
+        try:
             (props,) = _busctl(
                 binary,
                 BUS[0],
@@ -98,13 +124,16 @@ def read(timeout: float = 5.0) -> SourceResult:
                 timeout=timeout,
             )
             device = parse_device(path, props)
-            if device is not None:
-                devices.append(device)
-    except subprocess.CalledProcessError as error:
-        # No UPower daemon is a legitimate setup, not a failure worth surfacing.
-        if "was not provided by any .service files" in (error.stderr or ""):
-            return SourceResult()
-        return SourceResult(error=SourceError(SOURCE, (error.stderr or str(error)).strip()))
-    except (subprocess.TimeoutExpired, ValueError, KeyError, TypeError) as error:
-        return SourceResult(error=SourceError(SOURCE, f"Could not read UPower: {error}"))
-    return SourceResult(devices=tuple(devices))
+        except subprocess.CalledProcessError as error:
+            # A device that disconnected between listing and reading is simply gone.
+            if "UnknownObject" in (error.stderr or "") or "Unknown object" in (error.stderr or ""):
+                continue
+            failures.append(_failure(error))
+            continue
+        except _READ_ERRORS as error:
+            failures.append(_failure(error))
+            continue
+        if device is not None:
+            devices.append(device)
+    error = SourceError(SOURCE, "; ".join(failures)) if failures else None
+    return SourceResult(devices=tuple(devices), error=error)

@@ -17,12 +17,14 @@ ColumnLayout {
     property int interval: 2000
     property var rows: []
 
+    readonly property bool sampling: active && count > 0
+
     Layout.fillWidth: true
     spacing: Kirigami.Units.smallSpacing / 2
 
     Process.ProcessDataModel {
         id: processes
-        enabled: list.active
+        enabled: list.sampling
         enabledAttributes: ["name"].concat(list.attributes)
     }
 
@@ -40,7 +42,7 @@ ColumnLayout {
 
     Timer {
         interval: list.interval
-        running: list.active
+        running: list.sampling
         repeat: true
         triggeredOnStart: true
         onTriggered: list.refresh()

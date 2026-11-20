@@ -61,7 +61,9 @@ def remember(devices: list[Device], cache: dict[str, dict[str, object]], now: st
                     "updatedAt": now,
                 }
         else:
-            entry = cache.get(device.id) or {}
+            entry = cache.get(device.id)
+            if not isinstance(entry, dict):
+                entry = {}  # Missing or corrupt: no last reading.
             percent = entry.get("percent")
             if isinstance(percent, int | float) and isinstance(entry.get("updatedAt"), str):
                 device = replace(

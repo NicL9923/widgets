@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
+import "StatsLogic.js" as Logic
 
 Kirigami.FormLayout {
     id: page
@@ -23,14 +24,17 @@ Kirigami.FormLayout {
         {value: "network", text: i18n("Network")},
         {value: "sensors", text: i18n("Sensors")},
     ]
-    readonly property var styles: [
-        {value: "auto", text: i18n("Module default")},
-        {value: "mini", text: i18n("Mini")},
-        {value: "line", text: i18n("Line chart")},
-        {value: "bar", text: i18n("Bar chart")},
-        {value: "speed", text: i18n("Speed (network and disk)")},
-        {value: "stack", text: i18n("Stack (sensors)")},
-    ]
+    readonly property var styleNames: ({
+        mini: i18n("Mini"),
+        line: i18n("Line chart"),
+        bar: i18n("Bar chart"),
+        speed: i18n("Speed"),
+        stack: i18n("Stack"),
+    })
+    // Only the styles the chosen module can draw, its default first.
+    readonly property var styles: Logic.moduleStyles(cfg_module).map(function(style, index) {
+        return {value: style, text: index === 0 ? i18n("%1 (default)", styleNames[style]) : styleNames[style]};
+    })
 
     QQC2.ComboBox {
         Kirigami.FormData.label: i18n("Shows:")
@@ -46,7 +50,7 @@ Kirigami.FormLayout {
         model: page.styles
         textRole: "text"
         valueRole: "value"
-        Component.onCompleted: currentIndex = indexOfValue(page.cfg_compactStyle)
+        currentIndex: Math.max(0, indexOfValue(Logic.compactStyle(page.cfg_module, page.cfg_compactStyle)))
         onActivated: page.cfg_compactStyle = currentValue
     }
 

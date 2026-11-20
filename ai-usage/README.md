@@ -5,7 +5,7 @@
 Claude Code, Codex, and Grok subscription usage in your KDE Plasma panel or macOS menu bar.
 
 [![CI](https://github.com/NicL9923/widgets/actions/workflows/ci.yml/badge.svg)](https://github.com/NicL9923/widgets/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](../LICENSE)
 [![Plasma 6](https://img.shields.io/badge/Plasma-6-1d99f3.svg)](https://kde.org/plasma-desktop/)
 
 ![AI Usage widget open above a KDE Plasma panel](docs/ai-usage.png)
@@ -201,4 +201,4 @@ Provider marks come from [Simple Icons](https://simpleicons.org/) and
 [SVG Logos](https://github.com/gilbarbara/logos), both CC0-1.0. Provider names and marks
 belong to their respective owners. This project is not affiliated with them.
 
-Released under the [MIT license](LICENSE).
+Released under the [MIT license](../LICENSE).

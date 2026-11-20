@@ -16,7 +16,7 @@ MouseArea {
     // With nothing connected the applet shrinks to nothing, except while the panel is being
     // edited, where it needs a handle to be moved or configured.
     readonly property bool placeholder: root.devices.length === 0
-        && (root.editing || root.helperError !== "" || !root.loaded)
+        && (root.editing || root.hasProblem || !root.loaded)
 
     Layout.minimumWidth: vertical ? 0 : (placeholder ? iconSize : layout.implicitWidth)
     Layout.minimumHeight: vertical ? (placeholder ? iconSize : layout.implicitHeight) : 0
@@ -38,7 +38,7 @@ MouseArea {
         width: compact.iconSize
         height: width
         visible: compact.placeholder
-        source: root.helperError !== "" ? "dialog-warning" : "battery-070"
+        source: root.hasProblem ? "dialog-warning" : "battery-070"
         opacity: root.loaded ? 1 : 0.5
     }
 

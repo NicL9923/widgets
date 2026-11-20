@@ -54,6 +54,8 @@ PlasmaExtras.Representation {
         Loader {
             id: popupLoader
             width: scroll.contentWidth
+            // Plasma may build the popup ahead of time; only create its sensors while open.
+            active: root.expanded
             sourceComponent: root.module ? root.module.popup : null
         }
     }

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Print the settings of the current panel widgets as JSON for layout.js.
 
-Reads ~/.config/plasma-org.kde.plasma.desktop-appletsrc and returns the first configured
+Reads the given plasma-org.kde.plasma.desktop-appletsrc and returns the first configured
 copy of each widget type: {pluginId: {group: {key: value}}}. Known list-valued keys become
 arrays, since Plasma's scripting API would otherwise store them as one string.
 """

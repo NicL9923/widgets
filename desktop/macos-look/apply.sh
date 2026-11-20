@@ -6,6 +6,9 @@ set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$here/../.." && pwd)"
+# The directory KDE actually reads, which is not always ~/.config.
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}"
+layout_file="plasma-org.kde.plasma.desktop-appletsrc"
 backup="${XDG_DATA_HOME:-$HOME/.local/share}/desktop-backups/pre-macos-look-$(date +%Y%m%d-%H%M%S)"
 # Pinned upstream commits, so a re-run installs what was tested. Bump after checking them.
 declare -A pins=(
@@ -16,11 +19,27 @@ CONFIG_FILES=(kdeglobals kwinrc plasma-org.kde.plasma.desktop-appletsrc plasmash
   kglobalshortcutsrc plasmarc kwinrulesrc kscreenlockerrc gtk-3.0 gtk-4.0 gtkrc gtkrc-2.0
   xsettingsd Kvantum)
 
+[[ -f "$config_dir/$layout_file" ]] || { echo "no Plasma layout in $config_dir; is this a Plasma session?" >&2; exit 1; }
+
+# Read everything that can fail before changing anything.
+carry="$(python3 "$here/carry.py" "$config_dir/$layout_file")"
+python3 -c 'import json, sys; json.loads(sys.argv[1])' "$carry"
+layout="$(cat "$here/layout.js")"
+
 echo "==> Saving current setup to $backup"
 mkdir -p "$backup/config"
+# restore.sh deletes paths listed in "absent", so it also undoes files this script creates.
+: > "$backup/absent"
 for name in "${CONFIG_FILES[@]}"; do
-  [[ -e "$HOME/.config/$name" ]] && cp -a "$HOME/.config/$name" "$backup/config/"
+  if [[ -e "$config_dir/$name" ]]; then
+    cp -a "$config_dir/$name" "$backup/config/"
+  else
+    echo "$name" >> "$backup/absent"
+  fi
 done
+echo "$config_dir" > "$backup/config-dir"
+cmp -s "$config_dir/$layout_file" "$backup/config/$layout_file" \
+  || { echo "snapshot of $layout_file failed; nothing changed" >&2; exit 1; }
 
 echo "==> Installing Kvantum and the widgets"
 rpm -q kvantum >/dev/null 2>&1 || sudo dnf install -y kvantum
@@ -60,9 +79,8 @@ kwriteconfig6 --file kwinrc --group Plugins --key squashEnabled false
 qdbus-qt6 org.kde.KWin /KWin reconfigure
 
 echo "==> Building the menu bars and dock"
-script="var CARRY = $(python3 "$here/carry.py");
-$(cat "$here/layout.js")"
-qdbus-qt6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$script"
+qdbus-qt6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "var CARRY = $carry;
+$layout"
 
 echo
 echo "Done. To undo: $here/restore.sh $backup"

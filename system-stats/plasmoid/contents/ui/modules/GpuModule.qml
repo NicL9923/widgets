@@ -74,7 +74,7 @@ ModuleBase {
                 RingGauge {
                     fraction: (temperature.value || 0) / 100
                     known: temperature.status === Sensors.Sensor.Ready
-                    valueText: Math.round(temperature.value) + "°"
+                    valueText: Logic.formatNumber(temperature.value, 0) + "°"
                     caption: i18n("Temperature")
                     color: root.fillColor(Logic.temperatureLevel(temperature.value))
                 }
@@ -120,6 +120,7 @@ ModuleBase {
 
             Section {
                 title: i18n("Top processes by GPU memory")
+                visible: Plasmoid.configuration.topProcessCount > 0
                 ProcessList {
                     attributes: ["gpu_memory"]
                     format: value => Logic.formatBinary(value * 1024)

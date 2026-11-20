@@ -14,9 +14,10 @@ ModuleBase {
 
     title: i18n("Sensors")
     icon: "temperature-normal"
-    fraction: Math.max(cpuTemperature.value || 0, gpuTemperature.value || 0) / 100
+    readonly property bool cpuReady: cpuTemperature.status === Sensors.Sensor.Ready
+    fraction: cpuReady ? cpuTemperature.value / 100 : NaN
     level: Logic.temperatureLevel(Math.max(cpuTemperature.value || 0, gpuTemperature.value || 0))
-    valueText: Math.round(cpuTemperature.value || 0) + "°"
+    valueText: cpuReady ? Math.round(cpuTemperature.value) + "°" : "–"
     summary: i18n("CPU: %1\nGPU: %2", cpuTemperature.formattedValue || "–", gpuTemperature.formattedValue || "–")
     stackRows: [
         {label: i18n("CPU"), value: cpuTemperature.status === Sensors.Sensor.Ready ? Math.round(cpuTemperature.value) + "°" : "–",

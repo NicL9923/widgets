@@ -17,6 +17,9 @@ PlasmoidItem {
     readonly property string helper: Plasmoid.configuration.helperCommand
     readonly property int pollSeconds: Math.max(5, Plasmoid.configuration.pollIntervalSeconds)
     readonly property int lowThreshold: Plasmoid.configuration.lowThreshold
+    // A source error (say, no permission to read a receiver) must stay visible even when
+    // no device made it through, or the applet would vanish with nothing to click.
+    readonly property bool hasProblem: helperError !== "" || errors.length > 0
     readonly property bool editing: Plasmoid.containment && Plasmoid.containment.corona
         ? Plasmoid.containment.corona.editMode : false
 
@@ -104,20 +107,20 @@ PlasmoidItem {
 
     toolTipMainText: i18n("Device battery")
     toolTipSubText: {
-        if (root.helperError !== "")
-            return root.helperError;
         if (!root.loaded)
             return i18n("Loading…");
-        if (root.devices.length === 0)
-            return i18n("No connected devices report a battery");
-        return root.devices.map(device => root.deviceSummary(device)).join("\n");
+        const lines = root.devices.map(device => root.deviceSummary(device));
+        if (root.helperError !== "")
+            lines.push(root.helperError);
+        lines.push(...root.errors);
+        return lines.length > 0 ? lines.join("\n") : i18n("No connected devices report a battery");
     }
 
     // Nothing connected and nothing wrong: stay out of the way.
     Plasmoid.status: {
         if (root.devices.some(device => BatteryState.level(device, root.lowThreshold) !== "normal"))
             return PlasmaCore.Types.NeedsAttentionStatus;
-        if (root.loaded && root.devices.length === 0 && root.helperError === "")
+        if (root.loaded && root.devices.length === 0 && !root.hasProblem)
             return PlasmaCore.Types.PassiveStatus;
         return PlasmaCore.Types.ActiveStatus;
     }

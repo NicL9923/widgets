@@ -100,6 +100,7 @@ ModuleBase {
 
             Section {
                 title: i18n("Top processes")
+                visible: Plasmoid.configuration.topProcessCount > 0
                 ProcessList {
                     attributes: ["memory"]
                     format: value => Logic.formatBinary(value * 1024)

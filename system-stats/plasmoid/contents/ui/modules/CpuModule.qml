@@ -97,14 +97,14 @@ ModuleBase {
                 RingGauge {
                     fraction: (temperature.value || 0) / 100
                     known: temperature.status === Sensors.Sensor.Ready
-                    valueText: Math.round(temperature.value) + "°"
+                    valueText: Logic.formatNumber(temperature.value, 0) + "°"
                     caption: i18n("Temperature")
                     color: root.fillColor(Logic.temperatureLevel(temperature.value))
                 }
                 RingGauge {
                     fraction: maxFrequency.value > 0 ? frequency.value / maxFrequency.value : 0
                     known: frequency.status === Sensors.Sensor.Ready
-                    valueText: (frequency.value / 1000).toFixed(1)
+                    valueText: Logic.formatNumber(frequency.value / 1000, 1)
                     caption: i18n("GHz")
                     color: Kirigami.Theme.visitedLinkColor
                 }
@@ -152,7 +152,7 @@ ModuleBase {
                 DetailRow { label: i18n("System"); value: Logic.formatPercentPrecise(system.value); dotColor: Kirigami.Theme.negativeTextColor }
                 DetailRow { label: i18n("User"); value: Logic.formatPercentPrecise(user.value); dotColor: Kirigami.Theme.highlightColor }
                 DetailRow { label: i18n("I/O wait"); value: Logic.formatPercentPrecise(wait.value) }
-                DetailRow { label: i18n("Idle"); value: Logic.formatPercentPrecise(100 - (usage.value || 0)); dotColor: Qt.alpha(Kirigami.Theme.textColor, 0.3) }
+                DetailRow { label: i18n("Idle"); value: Logic.formatPercentPrecise(usage.status === Sensors.Sensor.Ready ? 100 - usage.value : NaN); dotColor: Qt.alpha(Kirigami.Theme.textColor, 0.3) }
                 DetailRow { label: i18n("Hottest core sensor"); value: maxTemperature.formattedValue || "–" }
                 DetailRow { label: i18n("Logical cores"); value: String(coreCount.value || "–") }
                 DetailRow { label: i18n("Uptime"); value: Logic.formatDuration(uptime.value) }
@@ -160,13 +160,14 @@ ModuleBase {
 
             Section {
                 title: i18n("Average load")
-                DetailRow { label: i18n("1 minute"); value: Number(load1.value || 0).toFixed(2) }
-                DetailRow { label: i18n("5 minutes"); value: Number(load5.value || 0).toFixed(2) }
-                DetailRow { label: i18n("15 minutes"); value: Number(load15.value || 0).toFixed(2) }
+                DetailRow { label: i18n("1 minute"); value: Logic.formatNumber(load1.value, 2) }
+                DetailRow { label: i18n("5 minutes"); value: Logic.formatNumber(load5.value, 2) }
+                DetailRow { label: i18n("15 minutes"); value: Logic.formatNumber(load15.value, 2) }
             }
 
             Section {
                 title: i18n("Top processes")
+                visible: Plasmoid.configuration.topProcessCount > 0
                 ProcessList {
                     attributes: ["usage"]
                     format: value => Logic.formatPercent(value)

@@ -9,7 +9,7 @@
       <default>cpu</default>
     </entry>
     <entry name="compactStyle" type="String">
-      <default>auto</default>
+      <default></default>
     </entry>
     <entry name="showLabel" type="Bool">
       <default>true</default>

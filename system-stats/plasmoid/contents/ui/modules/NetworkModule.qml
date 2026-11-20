@@ -16,7 +16,8 @@ ModuleBase {
     // Rates cover the configured interface, or every interface (Stats' default).
     readonly property string rateId: interfaceIds.indexOf(configured) >= 0 ? configured : "all"
     // Address details need a real interface: the configured one, else the first with an IPv4.
-    property string detailId: interfaceIds.indexOf(configured) >= 0 ? configured : ""
+    readonly property string detailId: interfaceIds.indexOf(configured) >= 0 ? configured : autoDetailId
+    property string autoDetailId: ""
 
     title: i18n("Network")
     icon: "network-wired"
@@ -36,22 +37,28 @@ ModuleBase {
 
     Instantiator {
         id: addresses
-        active: network.configured === "" || network.interfaceIds.indexOf(network.configured) < 0
+        active: network.interfaceIds.indexOf(network.configured) < 0
         model: network.interfaceIds
-        delegate: Sensors.Sensor { sensorId: "network/" + modelData + "/ipv4address" }
+        delegate: Sensors.Sensor {
+            sensorId: "network/" + modelData + "/ipv4address"
+            onValueChanged: pickDetail.restart()
+        }
         onObjectAdded: pickDetail.restart()
+        onObjectRemoved: pickDetail.restart()
     }
+    // Re-pick whenever addresses come, go, or change, so the details follow the live link.
     Timer {
         id: pickDetail
-        interval: 500
+        interval: 250
         onTriggered: {
             for (let i = 0; i < addresses.count; ++i) {
                 const sensor = addresses.objectAt(i);
                 if (sensor && sensor.value) {
-                    network.detailId = network.interfaceIds[i];
+                    network.autoDetailId = network.interfaceIds[i];
                     return;
                 }
             }
+            network.autoDetailId = "";
         }
     }
 
@@ -137,6 +144,7 @@ ModuleBase {
 
             Section {
                 title: i18n("Top processes")
+                visible: Plasmoid.configuration.topProcessCount > 0
                 ProcessList {
                     attributes: ["netInbound", "netOutbound"]
                     format: value => Logic.formatRate(value)

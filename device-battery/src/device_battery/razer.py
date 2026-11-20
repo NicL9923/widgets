@@ -84,13 +84,15 @@ def parse_response(request: bytes, response: bytes) -> int:
     """
     if len(response) != REPORT_SIZE:
         raise ValueError(f"expected {REPORT_SIZE} bytes, got {len(response)}")
+    # Check the echoed header before trusting the status, so stray bytes never read as a
+    # sleeping mouse or a battery level.
+    if response[1] != request[1] or response[6:8] != request[6:8]:
+        raise ValueError("response is for a different command")
     status = response[0]
     if status == STATUS_TIMEOUT:
         raise DeviceAsleepError
     if status != STATUS_SUCCESS:
         raise ValueError(f"status 0x{status:02x}")
-    if response[6:8] != request[6:8]:
-        raise ValueError("response is for a different command")
     if response[88] != checksum(response):
         raise ValueError("bad checksum")
     return response[9]
@@ -104,11 +106,14 @@ Transport = Callable[[bytes], bytes]
 def hidraw_transport(fd: int, wait: float = 0.06) -> Transport:
     def exchange(request: bytes) -> bytes:
         buffer = bytearray(b"\x00" + request)  # Report id 0.
-        fcntl.ioctl(fd, HIDIOCSFEATURE, buffer)
+        sent = fcntl.ioctl(fd, HIDIOCSFEATURE, buffer)
+        if sent != len(buffer):
+            raise ValueError(f"sent {sent} of {len(buffer)} bytes")
         time.sleep(wait)
         reply = bytearray(REPORT_SIZE + 1)
-        fcntl.ioctl(fd, HIDIOCGFEATURE, reply)
-        return bytes(reply[1:])
+        received = fcntl.ioctl(fd, HIDIOCGFEATURE, reply)
+        # The ioctl returns how many bytes it filled; the rest of the buffer is still zeros.
+        return bytes(reply[1:received])
 
     return exchange
 
@@ -132,8 +137,11 @@ def read_device(transport: Transport, model: Model) -> tuple[int, bool]:
     return round(level * 100 / 255), charging
 
 
-def find_control_nodes(sysfs: Path = Path("/sys/class/hidraw")) -> Iterator[tuple[str, int]]:
-    """Yield (/dev/hidrawN, product id) for interface 0 of every known Razer dongle."""
+def find_control_nodes(sysfs: Path = Path("/sys/class/hidraw")) -> Iterator[tuple[str, int, str]]:
+    """Yield (/dev/hidrawN, product id, USB port) for interface 0 of every known dongle.
+
+    The USB port path ("5-2.4.4.3") tells two receivers of the same model apart.
+    """
     for node in sorted(sysfs.glob("hidraw*")):
         try:
             uevent = (node / "device/uevent").read_text()
@@ -146,13 +154,13 @@ def find_control_nodes(sysfs: Path = Path("/sys/class/hidraw")) -> Iterator[tupl
             continue
         product = int(parts[2], 16)
         if product in MODELS and interface.endswith(":1.0"):
-            yield f"/dev/{node.name}", product
+            yield f"/dev/{node.name}", product, interface.rsplit(":", 1)[0]
 
 
 def read(sysfs: Path = Path("/sys/class/hidraw")) -> SourceResult:
     devices: list[Device] = []
     failures: list[str] = []
-    for path, product in find_control_nodes(sysfs):
+    for path, product, port in find_control_nodes(sysfs):
         model = MODELS[product]
         try:
             fd = os.open(path, os.O_RDWR)
@@ -163,7 +171,7 @@ def read(sysfs: Path = Path("/sys/class/hidraw")) -> SourceResult:
             failures.append(f"{model.name}: {error.strerror}")
             continue
         device = Device(
-            id=f"{SOURCE}:{product:04x}",
+            id=f"{SOURCE}:{product:04x}:{port}",
             name=model.name,
             kind="mouse",
             percent=None,

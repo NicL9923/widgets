@@ -13,7 +13,9 @@ ModuleBase {
 
     readonly property var diskIds: Logic.disks(root.sensorIds)
     // The configured disk, else the largest one: on most machines, the root filesystem.
-    property string diskId: ""
+    readonly property string diskId: diskIds.indexOf(Plasmoid.configuration.diskId) >= 0
+        ? Plasmoid.configuration.diskId : autoDiskId
+    property string autoDiskId: ""
     readonly property string prefix: "disk/" + diskId + "/"
 
     title: name.value ? i18n("Disk: %1", name.value) : i18n("Disk")
@@ -26,22 +28,22 @@ ModuleBase {
     upText: Logic.formatRate(write.value)
     downText: Logic.formatRate(read.value)
 
-    // Pick the disk once sizes are known. Totals are constant, so read them on demand.
+    // Pick the largest disk, and pick again whenever a size arrives or a disk comes or goes.
     Instantiator {
         id: totals
+        active: disk.diskIds.indexOf(Plasmoid.configuration.diskId) < 0
         model: disk.diskIds
-        delegate: Sensors.Sensor { sensorId: "disk/" + modelData + "/total" }
+        delegate: Sensors.Sensor {
+            sensorId: "disk/" + modelData + "/total"
+            onValueChanged: chooser.restart()
+        }
         onObjectAdded: chooser.restart()
+        onObjectRemoved: chooser.restart()
     }
     Timer {
         id: chooser
-        interval: 500
+        interval: 250
         onTriggered: {
-            const configured = Plasmoid.configuration.diskId;
-            if (disk.diskIds.indexOf(configured) >= 0) {
-                disk.diskId = configured;
-                return;
-            }
             let best = "";
             let bestTotal = -1;
             for (let i = 0; i < totals.count; ++i) {
@@ -51,12 +53,8 @@ ModuleBase {
                     best = disk.diskIds[i];
                 }
             }
-            disk.diskId = best;
+            disk.autoDiskId = best;
         }
-    }
-    Connections {
-        target: Plasmoid.configuration
-        function onDiskIdChanged() { chooser.restart(); }
     }
 
     Sensors.Sensor { id: name; sensorId: disk.prefix + "name" }
@@ -144,6 +142,7 @@ ModuleBase {
 
             Section {
                 title: i18n("Top processes")
+                visible: Plasmoid.configuration.topProcessCount > 0
                 ProcessList {
                     attributes: ["ioCharactersActuallyReadRate", "ioCharactersActuallyWrittenRate"]
                     format: value => Logic.formatRate(value)

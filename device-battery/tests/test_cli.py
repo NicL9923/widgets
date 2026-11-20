@@ -71,6 +71,7 @@ def test_sleeping_device_without_a_usable_reading_has_no_level() -> None:
         {},
         {"razer:Mouse": {"percent": "88", "updatedAt": EARLIER}},
         {"razer:Mouse": {"percent": 88}},
+        {"razer:Mouse": ["not", "an", "entry"]},
     ]
     for cache in unusable:
         (shown,) = cli.remember([asleep], cache, NOW)

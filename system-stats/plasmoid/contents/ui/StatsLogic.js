@@ -2,27 +2,31 @@
 
 // Each instance shows one module, like one Stats menu bar item.
 const MODULES = {
-    cpu: {file: "CpuModule.qml", label: "CPU", style: "mini"},
-    gpu: {file: "GpuModule.qml", label: "GPU", style: "mini"},
-    memory: {file: "MemoryModule.qml", label: "RAM", style: "mini"},
-    disk: {file: "DiskModule.qml", label: "SSD", style: "mini"},
-    network: {file: "NetworkModule.qml", label: "NET", style: "speed"},
-    sensors: {file: "SensorsModule.qml", label: "SNS", style: "stack"},
+    cpu: {file: "CpuModule.qml", label: "CPU", styles: ["mini", "line", "bar"]},
+    gpu: {file: "GpuModule.qml", label: "GPU", styles: ["mini", "line", "bar"]},
+    memory: {file: "MemoryModule.qml", label: "RAM", styles: ["mini", "line", "bar"]},
+    disk: {file: "DiskModule.qml", label: "SSD", styles: ["mini", "bar", "speed"]},
+    network: {file: "NetworkModule.qml", label: "NET", styles: ["speed", "line"]},
+    sensors: {file: "SensorsModule.qml", label: "SNS", styles: ["stack", "mini"]},
 };
-const STYLES = ["mini", "line", "bar", "speed", "stack"];
 
 function moduleInfo(id) {
     return MODULES[id] || MODULES.cpu;
 }
 
+// The first listed style is the module's default. The config page offers the same list.
+function moduleStyles(id) {
+    return moduleInfo(id).styles;
+}
+
 function compactStyle(moduleId, configured) {
-    const own = moduleInfo(moduleId).style;
-    if (!configured || configured === "auto" || STYLES.indexOf(configured) < 0)
-        return own;
-    // Speed and stack only make sense for the modules that define them.
-    if ((configured === "speed" || configured === "stack") && configured !== own)
-        return own;
-    return configured;
+    const styles = moduleStyles(moduleId);
+    return styles.indexOf(configured) >= 0 ? configured : styles[0];
+}
+
+// Load averages and other plain numbers: a dash until a sample arrives.
+function formatNumber(value, decimals) {
+    return typeof value === "number" && isFinite(value) ? value.toFixed(decimals) : "–";
 }
 
 // Stats' Mini widget colors utilization at 60% and 80%.

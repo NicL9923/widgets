@@ -56,15 +56,6 @@ test('rates use decimal units and never print NaN', () => {
     assert.equal(logic.formatPercentPrecise(10.4), '10%');
 });
 
-test('compact style falls back to the module default where a style does not apply', () => {
-    assert.equal(logic.compactStyle('cpu', 'auto'), 'mini');
-    assert.equal(logic.compactStyle('cpu', 'line'), 'line');
-    assert.equal(logic.compactStyle('cpu', 'speed'), 'mini');
-    assert.equal(logic.compactStyle('network', 'auto'), 'speed');
-    assert.equal(logic.compactStyle('network', 'stack'), 'speed');
-    assert.equal(logic.compactStyle('unknown', 'bogus'), 'mini');
-});
-
 test('discovery skips group patterns, aggregates, and virtual interfaces', () => {
     assert.deepEqual(list(logic.gpus(IDS)), ['gpu0', 'gpu1']);
     assert.deepEqual(list(logic.disks(IDS)), ['18b3ae36', '5922ca44']);
@@ -103,4 +94,22 @@ test('process names collapse command lines but keep kernel threads', () => {
     assert.equal(logic.processName('/usr/bin/t3code-v2 --gpu-preferences=X'), 't3code-v2');
     assert.equal(logic.processName('[kworker/0:1]'), '[kworker/0:1]');
     assert.equal(logic.processName('(udev-worker)'), '(udev-worker)');
+});
+
+test('each module offers only styles it can draw, defaulting to its first', () => {
+    assert.equal(logic.compactStyle('cpu', ''), 'mini');
+    assert.equal(logic.compactStyle('cpu', 'bar'), 'bar');
+    assert.equal(logic.compactStyle('disk', 'speed'), 'speed');
+    assert.equal(logic.compactStyle('sensors', 'line'), 'stack');
+    assert.equal(logic.compactStyle('network', 'mini'), 'speed');
+    for (const id of ['cpu', 'gpu', 'memory', 'disk', 'network', 'sensors'])
+        assert.ok(list(logic.moduleStyles(id)).length > 0);
+});
+
+test('a missing sample prints a dash, a real zero prints zero', () => {
+    assert.equal(logic.formatNumber(undefined, 2), '–');
+    assert.equal(logic.formatNumber(NaN, 1), '–');
+    assert.equal(logic.formatNumber(0, 2), '0.00');
+    assert.equal(logic.formatPercentPrecise(NaN), '–');
+    assert.equal(logic.formatPercentPrecise(0), '0.0%');
 });
