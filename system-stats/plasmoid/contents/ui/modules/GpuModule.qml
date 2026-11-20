@@ -18,7 +18,7 @@ ModuleBase {
 
     title: name.value || i18n("GPU")
     icon: "gpu"
-    fraction: usage.status === Sensors.Sensor.Ready ? usage.value / 100 : NaN
+    fraction: typeof usage.value === "number" ? usage.value / 100 : NaN
     summary: i18n("Utilization: %1\nMemory: %2 of %3\nTemperature: %4", valueText,
         Logic.formatBinary(usedVram.value), Logic.formatBinary(totalVram.value), temperature.formattedValue || "–")
     history: usageHistory
@@ -73,7 +73,7 @@ ModuleBase {
                 }
                 RingGauge {
                     fraction: (temperature.value || 0) / 100
-                    known: temperature.status === Sensors.Sensor.Ready
+                    known: typeof temperature.value === "number"
                     valueText: Logic.formatNumber(temperature.value, 0) + "°"
                     caption: i18n("Temperature")
                     color: root.fillColor(Logic.temperatureLevel(temperature.value))

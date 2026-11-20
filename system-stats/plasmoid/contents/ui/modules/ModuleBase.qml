@@ -11,7 +11,9 @@ Item {
     property string icon: "utilities-system-monitor"
     property string summary
 
-    // Main reading as a 0-1 fraction; NaN until the first value arrives.
+    // Main reading as a 0-1 fraction; NaN until the first value arrives. A sensor's value is
+    // undefined until its first sample, even after its metadata reports it ready, so modules
+    // check for a number rather than for Sensor.Ready.
     property real fraction: NaN
     property string valueText: Logic.formatPercent(fraction * 100)
     property string level: Logic.usageLevel(fraction)

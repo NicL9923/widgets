@@ -13,12 +13,12 @@ ModuleBase {
 
     title: i18n("Memory")
     icon: "memory"
-    fraction: usedPercent.status === Sensors.Sensor.Ready ? usedPercent.value / 100 : NaN
+    fraction: typeof usedPercent.value === "number" ? usedPercent.value / 100 : NaN
     summary: i18n("Used: %1 of %2\nPressure: %3", Logic.formatBinary(used.value),
         Logic.formatBinary(total.value), pressureText)
     history: usageHistory
 
-    readonly property string pressure: pressureSome.status === Sensors.Sensor.Ready
+    readonly property string pressure: typeof pressureSome.value === "number"
         ? Logic.pressureLevel(pressureSome.value) : "unknown"
     readonly property string pressureText: ({normal: i18n("normal"), warning: i18n("warning"),
         critical: i18n("critical")})[pressure] || "–"
@@ -93,7 +93,7 @@ ModuleBase {
                 }
                 DetailRow {
                     label: i18n("Stalled on memory (10 s)")
-                    value: pressureSome.status === Sensors.Sensor.Ready ? Number(pressureSome.value).toFixed(1) + "%" : "–"
+                    value: typeof pressureSome.value === "number" ? Number(pressureSome.value).toFixed(1) + "%" : "–"
                     valueColor: root.levelColor(memory.pressure)
                 }
             }

@@ -76,19 +76,26 @@ def checksum(report: bytes | bytearray) -> int:
     return value
 
 
+def response_status(request: bytes, response: bytes) -> int:
+    """Return the status byte of a well-formed reply to this request.
+
+    Checks the length and the echoed header first, so a short reply or stray bytes never
+    read as a busy dongle, a sleeping mouse, or a battery level.
+    """
+    if len(response) != REPORT_SIZE:
+        raise ValueError(f"expected {REPORT_SIZE} bytes, got {len(response)}")
+    if response[1] != request[1] or response[6:8] != request[6:8]:
+        raise ValueError("response is for a different command")
+    return response[0]
+
+
 def parse_response(request: bytes, response: bytes) -> int:
     """Return the first data argument of a successful response.
 
     Raises DeviceAsleepError when the mouse did not answer and ValueError for anything
     that is not a well-formed answer to this request.
     """
-    if len(response) != REPORT_SIZE:
-        raise ValueError(f"expected {REPORT_SIZE} bytes, got {len(response)}")
-    # Check the echoed header before trusting the status, so stray bytes never read as a
-    # sleeping mouse or a battery level.
-    if response[1] != request[1] or response[6:8] != request[6:8]:
-        raise ValueError("response is for a different command")
-    status = response[0]
+    status = response_status(request, response)
     if status == STATUS_TIMEOUT:
         raise DeviceAsleepError
     if status != STATUS_SUCCESS:
@@ -124,7 +131,8 @@ def query(transport: Transport, model: Model, command: tuple[int, int], attempts
         response = transport(request)
         # A busy dongle, or one whose first relay to a just-woken mouse timed out, gets
         # another try before the mouse counts as asleep.
-        if response[0] in (STATUS_BUSY, STATUS_TIMEOUT) and attempt < attempts - 1:
+        status = response_status(request, response)
+        if status in (STATUS_BUSY, STATUS_TIMEOUT) and attempt < attempts - 1:
             time.sleep(0.05)
             continue
         return parse_response(request, response)

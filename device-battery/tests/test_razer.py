@@ -171,3 +171,9 @@ def test_two_receivers_of_one_model_get_distinct_ids(tmp_path: Path) -> None:
     make_hidraw(tmp_path, "hidraw9", "0003:00001532:000000C1", "3-1:1.0")
     ports = [port for _, _, port in razer.find_control_nodes(tmp_path / "class")]
     assert ports == ["5-2", "3-1"]
+
+
+def test_empty_reply_is_an_error_not_a_crash(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(razer.time, "sleep", lambda _: None)
+    with pytest.raises(ValueError, match="expected 90 bytes, got 0"):
+        razer.query(FakeDongle(b""), VIPER, razer.BATTERY)

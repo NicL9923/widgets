@@ -13,7 +13,7 @@ ModuleBase {
 
     title: i18n("CPU")
     icon: "cpu"
-    fraction: usage.status === Sensors.Sensor.Ready ? usage.value / 100 : NaN
+    fraction: typeof usage.value === "number" ? usage.value / 100 : NaN
     summary: i18n("Usage: %1\nTemperature: %2\nLoad average: %3", valueText,
         temperature.formattedValue || "–", load1.formattedValue || "–")
     history: usageHistory
@@ -73,7 +73,7 @@ ModuleBase {
             const values = [];
             for (let i = 0; i < cores.count; ++i) {
                 const core = cores.objectAt(i);
-                values.push(core && core.status === Sensors.Sensor.Ready ? core.value / 100 : 0);
+                values.push(core && typeof core.value === "number" ? core.value / 100 : 0);
             }
             cpu.coreValues = values;
         }
@@ -96,14 +96,14 @@ ModuleBase {
                 }
                 RingGauge {
                     fraction: (temperature.value || 0) / 100
-                    known: temperature.status === Sensors.Sensor.Ready
+                    known: typeof temperature.value === "number"
                     valueText: Logic.formatNumber(temperature.value, 0) + "°"
                     caption: i18n("Temperature")
                     color: root.fillColor(Logic.temperatureLevel(temperature.value))
                 }
                 RingGauge {
                     fraction: maxFrequency.value > 0 ? frequency.value / maxFrequency.value : 0
-                    known: frequency.status === Sensors.Sensor.Ready
+                    known: typeof frequency.value === "number"
                     valueText: Logic.formatNumber(frequency.value / 1000, 1)
                     caption: i18n("GHz")
                     color: Kirigami.Theme.visitedLinkColor
@@ -152,7 +152,7 @@ ModuleBase {
                 DetailRow { label: i18n("System"); value: Logic.formatPercentPrecise(system.value); dotColor: Kirigami.Theme.negativeTextColor }
                 DetailRow { label: i18n("User"); value: Logic.formatPercentPrecise(user.value); dotColor: Kirigami.Theme.highlightColor }
                 DetailRow { label: i18n("I/O wait"); value: Logic.formatPercentPrecise(wait.value) }
-                DetailRow { label: i18n("Idle"); value: Logic.formatPercentPrecise(usage.status === Sensors.Sensor.Ready ? 100 - usage.value : NaN); dotColor: Qt.alpha(Kirigami.Theme.textColor, 0.3) }
+                DetailRow { label: i18n("Idle"); value: Logic.formatPercentPrecise(typeof usage.value === "number" ? 100 - usage.value : NaN); dotColor: Qt.alpha(Kirigami.Theme.textColor, 0.3) }
                 DetailRow { label: i18n("Hottest core sensor"); value: maxTemperature.formattedValue || "–" }
                 DetailRow { label: i18n("Logical cores"); value: String(coreCount.value || "–") }
                 DetailRow { label: i18n("Uptime"); value: Logic.formatDuration(uptime.value) }

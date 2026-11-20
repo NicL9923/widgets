@@ -85,6 +85,10 @@ def _failure(error: Exception) -> str:
     return f"Could not read UPower: {error}"
 
 
+# What busctl prints when a device disconnected between listing and reading. GLib's
+# dispatcher answers "Object does not exist at path"; other services use UnknownObject.
+_GONE = ("Object does not exist at path", "UnknownObject", "Unknown object")
+
 _READ_ERRORS = (
     subprocess.CalledProcessError,
     subprocess.TimeoutExpired,
@@ -126,7 +130,7 @@ def read(timeout: float = 5.0) -> SourceResult:
             device = parse_device(path, props)
         except subprocess.CalledProcessError as error:
             # A device that disconnected between listing and reading is simply gone.
-            if "UnknownObject" in (error.stderr or "") or "Unknown object" in (error.stderr or ""):
+            if any(marker in (error.stderr or "") for marker in _GONE):
                 continue
             failures.append(_failure(error))
             continue

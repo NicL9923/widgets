@@ -93,7 +93,9 @@ def test_one_vanished_or_failing_device_does_not_hide_the_others(
             {
                 "/org/freedesktop/UPower": [[gone, PATH, broken]],
                 gone: subprocess.CalledProcessError(
-                    1, "busctl", stderr="Call failed: Unknown object '/org/...'."
+                    1,
+                    "busctl",
+                    stderr="Call failed: Object does not exist at path “/org/.../mouse_gone”",
                 ),
                 PATH: [props()],
                 broken: subprocess.CalledProcessError(1, "busctl", stderr="Access denied"),

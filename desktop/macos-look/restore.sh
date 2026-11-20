@@ -7,37 +7,68 @@ layout_file="plasma-org.kde.plasma.desktop-appletsrc"
 [[ -f "$backup/config/$layout_file" ]] || { echo "no Plasma layout in $backup/config" >&2; exit 1; }
 config_dir="$(cat "$backup/config-dir" 2>/dev/null || echo "${XDG_CONFIG_HOME:-$HOME/.config}")"
 
-# Stage the snapshot next to the live config first, so a failed copy changes nothing.
+# Restore into the directory the running Plasma session reads, or not at all.
+session_dir="$(systemctl --user show-environment | sed -n 's/^XDG_CONFIG_HOME=//p')"
+session_dir="${session_dir:-$HOME/.config}"
+if [[ "$(realpath -m "$session_dir")" != "$(realpath -m "$config_dir")" ]]; then
+  echo "snapshot is for $config_dir but Plasma reads $session_dir; nothing changed" >&2
+  exit 1
+fi
+# The appearance commands below must read the restored files too.
+export XDG_CONFIG_HOME="$config_dir"
+
 stage="$(mktemp -d "$config_dir/.restore-stage.XXXXXX")"
 rollback="$(mktemp -d "$config_dir/.restore-rollback.XXXXXX")"
+installed=()
 restored=false
+stopped=false
+
 finish() {
+  set +e
   if [[ "$restored" != true ]]; then
     echo "Restore failed; putting the previous files back." >&2
-    for item in "$rollback"/*; do
-      [[ -e "$item" ]] || continue
-      rm -rf "$config_dir/$(basename "$item")"
-      mv "$item" "$config_dir/"
+    for name in "${installed[@]}"; do
+      rm -rf "${config_dir:?}/$name"
+    done
+    for item in "$rollback"/* "$rollback"/.[!.]*; do
+      [[ -e "$item" ]] && mv "$item" "$config_dir/"
     done
   fi
-  rm -rf "$stage" "$rollback"
-  # Whatever happened, never leave the desktop without a shell.
-  systemctl --user start plasma-plasmashell.service
+  # Whatever happened above, never leave the desktop without a shell.
+  if [[ "$stopped" == true ]] && ! systemctl --user start plasma-plasmashell.service; then
+    echo "plasmashell did not start; previous files kept in $rollback" >&2
+    rm -rf "$stage"
+    return
+  fi
+  rm -rf "$stage"
+  if [[ "$restored" == true || -z "$(ls -A "$rollback")" ]]; then
+    rm -rf "$rollback"
+  else
+    echo "Some previous files could not be moved back; they are in $rollback" >&2
+  fi
 }
 trap finish EXIT
+
+# Stage the snapshot next to the live config first, so a failed copy changes nothing.
 cp -a "$backup/config/." "$stage/"
 
 # plasmashell rewrites its layout on exit, so stop it before swapping files.
+stopped=true
 systemctl --user stop plasma-plasmashell.service
 for item in "$stage"/*; do
   name="$(basename "$item")"
-  [[ -e "$config_dir/$name" ]] && mv "$config_dir/$name" "$rollback/"
+  if [[ -e "$config_dir/$name" ]]; then
+    mv "$config_dir/$name" "$rollback/"
+  fi
   mv "$item" "$config_dir/"
+  installed+=("$name")
 done
 # Files that did not exist before apply.sh ran are moved aside, not kept.
 if [[ -f "$backup/absent" ]]; then
   while IFS= read -r name; do
-    [[ -n "$name" && -e "$config_dir/$name" ]] && mv "$config_dir/$name" "$rollback/"
+    if [[ -n "$name" && -e "$config_dir/$name" ]]; then
+      mv "$config_dir/$name" "$rollback/"
+    fi
   done < "$backup/absent"
 fi
 restored=true
@@ -49,6 +80,6 @@ scheme="$(kreadconfig6 --file kdeglobals --group General --key ColorScheme)"
 cursor="$(kreadconfig6 --file kcminputrc --group Mouse --key cursorTheme)"
 plasma-apply-cursortheme "${cursor:-breeze_cursors}" || true
 icons="$(kreadconfig6 --file kdeglobals --group Icons --key Theme)"
-/usr/libexec/plasma-changeicons "${icons:-breeze}" || true
+"${PLASMA_CHANGEICONS:-/usr/libexec/plasma-changeicons}" "${icons:-breeze}" || true
 qdbus-qt6 org.kde.KWin /KWin reconfigure || true
 echo "Restored $backup. Log out and back in to refresh every running app's style."

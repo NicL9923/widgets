@@ -81,13 +81,6 @@ ModuleBase {
         ColumnLayout {
             spacing: Kirigami.Units.largeSpacing
 
-            Sensors.Sensor { id: connection; sensorId: "network/" + network.detailId + "/network" }
-            Sensors.Sensor { id: ipv4; sensorId: "network/" + network.detailId + "/ipv4withPrefixLength" }
-            Sensors.Sensor { id: ipv6; sensorId: "network/" + network.detailId + "/ipv6address" }
-            Sensors.Sensor { id: gateway; sensorId: "network/" + network.detailId + "/ipv4gateway" }
-            Sensors.Sensor { id: dns; sensorId: "network/" + network.detailId + "/ipv4dns" }
-            Sensors.Sensor { id: signal; sensorId: "network/" + network.detailId + "/signal" }
-
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.gridUnit
@@ -130,16 +123,33 @@ ModuleBase {
                 DetailRow { label: i18n("Uploaded since boot"); value: Logic.formatBytes(totalUpload.value); dotColor: Kirigami.Theme.negativeTextColor }
             }
 
-            Section {
-                title: i18n("Details")
-                visible: network.detailId !== ""
-                DetailRow { label: i18n("Interface"); value: network.detailId }
-                DetailRow { label: i18n("Connection"); value: connection.value || "–" }
-                DetailRow { label: i18n("Signal"); value: signal.formattedValue; visible: signal.value > 0 }
-                DetailRow { label: i18n("Local IP"); value: ipv4.value || "–" }
-                DetailRow { label: i18n("IPv6"); value: ipv6.value || "–"; visible: !!ipv6.value }
-                DetailRow { label: i18n("Gateway"); value: gateway.value || "–" }
-                DetailRow { label: i18n("DNS"); value: dns.value || "–" }
+            // Rebuilt per interface: a reused Sensor would keep the previous interface's
+            // address until the new one reported.
+            Repeater {
+                model: network.detailId !== "" ? [network.detailId] : []
+
+                Section {
+                    id: details
+
+                    required property string modelData
+
+                    title: i18n("Details")
+
+                    Sensors.Sensor { id: connection; sensorId: "network/" + details.modelData + "/network" }
+                    Sensors.Sensor { id: ipv4; sensorId: "network/" + details.modelData + "/ipv4withPrefixLength" }
+                    Sensors.Sensor { id: ipv6; sensorId: "network/" + details.modelData + "/ipv6address" }
+                    Sensors.Sensor { id: gateway; sensorId: "network/" + details.modelData + "/ipv4gateway" }
+                    Sensors.Sensor { id: dns; sensorId: "network/" + details.modelData + "/ipv4dns" }
+                    Sensors.Sensor { id: signal; sensorId: "network/" + details.modelData + "/signal" }
+
+                    DetailRow { label: i18n("Interface"); value: details.modelData }
+                    DetailRow { label: i18n("Connection"); value: connection.value || "–" }
+                    DetailRow { label: i18n("Signal"); value: signal.formattedValue; visible: signal.value > 0 }
+                    DetailRow { label: i18n("Local IP"); value: ipv4.value || "–" }
+                    DetailRow { label: i18n("IPv6"); value: ipv6.value || "–"; visible: !!ipv6.value }
+                    DetailRow { label: i18n("Gateway"); value: gateway.value || "–" }
+                    DetailRow { label: i18n("DNS"); value: dns.value || "–" }
+                }
             }
 
             Section {

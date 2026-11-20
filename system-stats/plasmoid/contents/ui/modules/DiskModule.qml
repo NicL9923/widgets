@@ -16,13 +16,12 @@ ModuleBase {
     readonly property string diskId: diskIds.indexOf(Plasmoid.configuration.diskId) >= 0
         ? Plasmoid.configuration.diskId : autoDiskId
     property string autoDiskId: ""
-    readonly property string prefix: "disk/" + diskId + "/"
 
-    title: name.value ? i18n("Disk: %1", name.value) : i18n("Disk")
+    title: selected && selected.name ? i18n("Disk: %1", selected.name) : i18n("Disk")
     icon: "drive-harddisk"
-    fraction: usedPercent.status === Sensors.Sensor.Ready ? usedPercent.value / 100 : NaN
-    summary: i18n("%1 used of %2\nRead: %3\nWrite: %4", Logic.formatBytes(used.value),
-        Logic.formatBytes(total.value), Logic.formatRate(read.value), Logic.formatRate(write.value))
+    fraction: selected && typeof selected.usedPercent === "number" ? selected.usedPercent / 100 : NaN
+    summary: i18n("%1 used of %2\nRead: %3\nWrite: %4", Logic.formatBytes(selected ? selected.used : NaN),
+        Logic.formatBytes(selected ? selected.total : NaN), Logic.formatRate(read.value), Logic.formatRate(write.value))
     history: readHistory
     historyMaximum: 0
     upText: Logic.formatRate(write.value)
@@ -57,10 +56,28 @@ ModuleBase {
         }
     }
 
-    Sensors.Sensor { id: name; sensorId: disk.prefix + "name" }
-    Sensors.Sensor { id: usedPercent; sensorId: disk.prefix + "usedPercent"; updateRateLimit: root.interval }
-    Sensors.Sensor { id: used; sensorId: disk.prefix + "used"; updateRateLimit: root.interval }
-    Sensors.Sensor { id: total; sensorId: disk.prefix + "total" }
+    // A fresh set of sensors per selected disk. A Sensor keeps its last value when its id
+    // changes, so reusing one would show the previous disk's numbers until new data came.
+    property Item selected: null
+    Instantiator {
+        model: disk.diskId !== "" ? [disk.diskId] : []
+        delegate: Item {
+            required property string modelData
+            readonly property var name: nameSensor.value
+            readonly property var usedPercent: percentSensor.value
+            readonly property var used: usedSensor.value
+            readonly property var total: totalSensor.value
+            Sensors.Sensor { id: nameSensor; sensorId: "disk/" + modelData + "/name" }
+            Sensors.Sensor { id: percentSensor; sensorId: "disk/" + modelData + "/usedPercent"; updateRateLimit: root.interval }
+            Sensors.Sensor { id: usedSensor; sensorId: "disk/" + modelData + "/used"; updateRateLimit: root.interval }
+            Sensors.Sensor { id: totalSensor; sensorId: "disk/" + modelData + "/total" }
+        }
+        onObjectAdded: (index, object) => disk.selected = object
+        onObjectRemoved: (index, object) => {
+            if (disk.selected === object)
+                disk.selected = null;
+        }
+    }
     Sensors.Sensor { id: read; sensorId: "disk/all/read"; updateRateLimit: root.interval }
     Sensors.Sensor { id: write; sensorId: "disk/all/write"; updateRateLimit: root.interval }
 

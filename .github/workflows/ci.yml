@@ -93,6 +93,16 @@ jobs:
           done
           exit $status
 
+  desktop:
+    name: Desktop scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check shell syntax
+        run: bash -n desktop/macos-look/*.sh
+      - name: Test restore against a stubbed session
+        run: bash desktop/macos-look/tests/test_restore.sh
+
   macos:
     name: macOS menu bar (ai-usage)
     runs-on: macos-latest

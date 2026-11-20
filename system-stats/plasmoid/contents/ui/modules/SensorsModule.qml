@@ -14,15 +14,15 @@ ModuleBase {
 
     title: i18n("Sensors")
     icon: "temperature-normal"
-    readonly property bool cpuReady: cpuTemperature.status === Sensors.Sensor.Ready
+    readonly property bool cpuReady: typeof cpuTemperature.value === "number"
     fraction: cpuReady ? cpuTemperature.value / 100 : NaN
     level: Logic.temperatureLevel(Math.max(cpuTemperature.value || 0, gpuTemperature.value || 0))
     valueText: cpuReady ? Math.round(cpuTemperature.value) + "°" : "–"
     summary: i18n("CPU: %1\nGPU: %2", cpuTemperature.formattedValue || "–", gpuTemperature.formattedValue || "–")
     stackRows: [
-        {label: i18n("CPU"), value: cpuTemperature.status === Sensors.Sensor.Ready ? Math.round(cpuTemperature.value) + "°" : "–",
+        {label: i18n("CPU"), value: typeof cpuTemperature.value === "number" ? Math.round(cpuTemperature.value) + "°" : "–",
             level: Logic.temperatureLevel(cpuTemperature.value)},
-        {label: i18n("GPU"), value: gpuTemperature.status === Sensors.Sensor.Ready ? Math.round(gpuTemperature.value) + "°" : "–",
+        {label: i18n("GPU"), value: typeof gpuTemperature.value === "number" ? Math.round(gpuTemperature.value) + "°" : "–",
             level: Logic.temperatureLevel(gpuTemperature.value)},
     ]
 
