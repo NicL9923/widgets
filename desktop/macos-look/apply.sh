@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Give Plasma 6 a macOS look: MacTahoe theme parts, a menu bar with this repo's widgets on
-# every screen, and a dock on the primary screen. Snapshots the current setup first;
+# every screen, and a dock on every screen. Snapshots the current setup first;
 # restore.sh puts it back. Safe to re-run.
 set -euo pipefail
 
@@ -83,7 +83,7 @@ kwriteconfig6 --file kwinrc --group Plugins --key magiclampEnabled true
 kwriteconfig6 --file kwinrc --group Plugins --key squashEnabled false
 qdbus-qt6 org.kde.KWin /KWin reconfigure
 
-echo "==> Building the menu bars and dock"
+echo "==> Building the menu bars and docks"
 qdbus-qt6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "var CARRY = $carry;
 $layout"
 

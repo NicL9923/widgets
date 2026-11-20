@@ -8,7 +8,8 @@
 - A 30 px menu bar on every screen: launcher, the six [System Stats](../../system-stats/)
   modules, [Device Battery](../../device-battery/), [AI Usage](../../ai-usage/), weather,
   tray, and a "Thu Nov 19 19:23" clock.
-- A floating dock on the primary screen with your existing task manager launchers.
+- A floating dock on every screen with your existing task manager launchers. Each dock lists
+  every open window, so you can raise one from whichever monitor you are looking at.
 - Magic Lamp minimize.
 
 It snapshots the files it changes to `~/.local/share/desktop-backups/` first and prints the

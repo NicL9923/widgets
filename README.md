@@ -30,5 +30,5 @@ cd widgets
 ```
 
 [`desktop/macos-look`](desktop/macos-look/) installs the MacTahoe theme parts and builds a
-menu bar with all three widgets on every screen, plus a dock. It snapshots your current
+menu bar with all three widgets on every screen, plus a dock on each. It snapshots your current
 setup first and comes with a restore script.

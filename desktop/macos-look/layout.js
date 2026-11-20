@@ -1,4 +1,5 @@
-// Plasma shell script: a macOS-style menu bar on every screen and a dock on the primary one.
+// Plasma shell script: a macOS-style menu bar and dock on every screen. Each dock lists every
+// window, so a window on any monitor can be raised from the monitor you are looking at.
 // Run through org.kde.PlasmaShell.evaluateScript. Settings worth keeping (task manager
 // launchers, weather location, clock, launcher icon, AI Usage) carry over from the panels
 // it replaces. Re-running it rebuilds the same layout.
@@ -60,17 +61,16 @@ for (var s = 0; s < screenCount; ++s) {
     add(bar, "org.kde.plasma.systemtray");
     add(bar, "org.kde.plasma.digitalclock", {Appearance: {
         dateDisplayFormat: "BesideTime", dateFormat: "custom", customDateFormat: "ddd MMM d"}});
-}
 
-// screen 0 is the primary output.
-var dock = new Panel;
-dock.screen = 0;
-dock.location = "bottom";
-dock.height = DOCK_HEIGHT;
-dock.floating = true;
-dock.lengthMode = "fit";
-dock.alignment = "center";
-dock.hiding = "none";
-add(dock, "org.kde.plasma.icontasks", {General: {
-    showOnlyCurrentScreen: false, groupingStrategy: 1}});
-print("menu bars: " + screenCount + ", dock on screen 0");
+    var dock = new Panel;
+    dock.screen = s;
+    dock.location = "bottom";
+    dock.height = DOCK_HEIGHT;
+    dock.floating = true;
+    dock.lengthMode = "fit";
+    dock.alignment = "center";
+    dock.hiding = "none";
+    add(dock, "org.kde.plasma.icontasks", {General: {
+        showOnlyCurrentScreen: false, groupingStrategy: 1}});
+}
+print("menu bars and docks: " + screenCount);
