@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
+const path = require('node:path');
 const {test} = require('node:test');
 
 const state = vm.createContext({});
@@ -92,4 +93,16 @@ test('relative timestamps handle invalid dates, future checks, and passed resets
 test('relative timestamps use instants across daylight saving changes', () => {
     const now = Date.parse('2026-11-01T01:30:00-05:00');
     assert.equal(state.resetMinutes('2026-11-01T01:30:00-06:00', now), 60);
+});
+
+test('provider marks use names no icon theme ships', () => {
+    // Kirigami.Icon prefers a theme icon with the file's base name, so "claude.svg" rendered
+    // MacTahoe's Claude app icon as a solid square.
+    const dir = path.join(__dirname, '../plasmoid/contents/icons');
+    const main = fs.readFileSync(path.join(__dirname, '../plasmoid/contents/ui/main.qml'), 'utf8');
+    assert.match(main, /"\.\.\/icons\/aiusage-mark-" \+ providerId \+ "\.svg"/);
+    for (const id of ['codex', 'claude', 'grok'])
+        assert.ok(fs.existsSync(path.join(dir, `aiusage-mark-${id}.svg`)), id);
+    for (const name of fs.readdirSync(dir))
+        assert.match(name, /^aiusage-mark-/);
 });

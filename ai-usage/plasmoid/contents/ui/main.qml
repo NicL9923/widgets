@@ -72,7 +72,9 @@ PlasmoidItem {
     // Provider marks are bundled per id; anything unrecognized simply gets no mark.
     function providerMark(providerId) {
         if (providerId === "codex" || providerId === "claude" || providerId === "grok")
-            return Qt.resolvedUrl("../icons/" + providerId + ".svg");
+            // Kirigami.Icon looks a file's base name up in the icon theme first, so a plain
+            // "claude.svg" draws the theme's Claude app icon (MacTahoe ships one) as a square.
+            return Qt.resolvedUrl("../icons/aiusage-mark-" + providerId + ".svg");
         return "";
     }
 
