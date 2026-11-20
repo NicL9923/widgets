@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const {test} = require('node:test');
 
 const state = vm.createContext({});
-vm.runInContext(fs.readFileSync('plasmoid/contents/ui/UsageState.js', 'utf8'), state);
+vm.runInContext(fs.readFileSync(require('node:path').join(__dirname, '../plasmoid/contents/ui/UsageState.js'), 'utf8'), state);
 
 function provider(windows = [{label: 'Session', usedPercent: 12}]) {
     return {id: 'codex', windows, ok: true, primaryLabel: 'Session', primaryUsedPercent: 12};

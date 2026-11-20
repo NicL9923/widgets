@@ -1,0 +1,13 @@
+# Shared lint and format rules for every Python widget in this repo.
+line-length = 100
+target-version = "py311"
+src = ["ai-usage/src", "ai-usage/tests", "device-battery/src", "device-battery/tests"]
+
+[lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "RUF", "S", "C4", "PTH", "RET", "ARG"]
+ignore = [
+  "S603", # subprocess calls use fixed argv with no shell; that is the point of this tool
+]
+
+[lint.per-file-ignores]
+"*/tests/*" = ["S101", "ARG002"]

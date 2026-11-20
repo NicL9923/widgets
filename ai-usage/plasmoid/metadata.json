@@ -8,7 +8,7 @@
     "Version": "0.1.0",
     "License": "MIT",
     "Category": "System Information",
-    "Website": "https://github.com/NicL9923/ai-usage-widget",
+    "Website": "https://github.com/NicL9923/widgets",
     "Authors": [{ "Name": "Nicolas Layne" }]
   },
   "X-Plasma-API-Minimum-Version": "6.0"

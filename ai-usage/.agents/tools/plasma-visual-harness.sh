@@ -3,7 +3,7 @@
 # It never changes the installed AI Usage package or the user's containment.
 set -euo pipefail
 
-repo_root=$(git rev-parse --show-toplevel)
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 source_tree=${AI_USAGE_VISUAL_SOURCE_TREE:-"$repo_root/plasmoid"}
 fixture=${1:?usage: plasma-visual-harness.sh FIXTURE.json OUTPUT_DIR [label]}
 output_dir=${2:?usage: plasma-visual-harness.sh FIXTURE.json OUTPUT_DIR [label]}

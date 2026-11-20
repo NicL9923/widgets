@@ -1,0 +1,4 @@
+# Let the logged-in user read battery levels from Razer wireless dongles over hidraw.
+# Installed by device-battery/scripts/install.sh. Only product ids listed in
+# src/device_battery/razer.py MODELS belong here.
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1532", ATTRS{idProduct}=="00c1", TAG+="uaccess"

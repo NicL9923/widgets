@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+                          http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+  <kcfgfile name=""/>
+  <group name="General">
+    <entry name="module" type="String">
+      <default>cpu</default>
+    </entry>
+    <entry name="compactStyle" type="String">
+      <default>auto</default>
+    </entry>
+    <entry name="showLabel" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="updateIntervalMs" type="Int">
+      <default>1000</default>
+    </entry>
+    <entry name="topProcessCount" type="Int">
+      <default>5</default>
+    </entry>
+    <entry name="gpuId" type="String">
+      <default></default>
+    </entry>
+    <entry name="diskId" type="String">
+      <default></default>
+    </entry>
+    <entry name="networkInterface" type="String">
+      <default></default>
+    </entry>
+  </group>
+</kcfg>
