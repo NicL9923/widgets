@@ -4,7 +4,7 @@
 // launchers, weather location, clock, launcher icon, AI Usage) carry over from the panels
 // it replaces. Re-running it rebuilds the same layout.
 
-var MENU_BAR_HEIGHT = 34;
+var MENU_BAR_HEIGHT = 36;
 var DOCK_HEIGHT = 58;
 var STATS_MODULES = ["cpu", "gpu", "memory", "disk", "network", "sensors"];
 

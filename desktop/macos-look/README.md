@@ -5,7 +5,7 @@
 - MacTahoe dark colors, Plasma style, Kvantum app style, icons, and cursors, from
   [vinceliuice](https://github.com/vinceliuice) at pinned commits.
 - The MacTahoe window decoration with close, minimize, and maximize on the left.
-- A 34 px menu bar on every screen: launcher, the six [System Stats](../../system-stats/)
+- A 36 px menu bar on every screen: launcher, the six [System Stats](../../system-stats/)
   modules, [Device Battery](../../device-battery/), [AI Usage](../../ai-usage/), weather,
   tray, and a "Thu Nov 19 19:23" clock.
 - A floating dock on every screen with your existing task manager launchers. Each dock lists
