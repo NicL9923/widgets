@@ -4,7 +4,7 @@
 // launchers, weather location, clock, launcher icon, AI Usage) carry over from the panels
 // it replaces. Re-running it rebuilds the same layout.
 
-var MENU_BAR_HEIGHT = 30;
+var MENU_BAR_HEIGHT = 34;
 var DOCK_HEIGHT = 58;
 var STATS_MODULES = ["cpu", "gpu", "memory", "disk", "network", "sensors"];
 
@@ -60,7 +60,9 @@ for (var s = 0; s < screenCount; ++s) {
     add(bar, "weather.widget.plus", {Appearance: {widgetFontSize: 12, widgetIconSize: 16}});
     add(bar, "org.kde.plasma.systemtray");
     add(bar, "org.kde.plasma.digitalclock", {Appearance: {
-        dateDisplayFormat: "BesideTime", dateFormat: "custom", customDateFormat: "ddd MMM d"}});
+        dateDisplayFormat: "BesideTime", dateFormat: "custom", customDateFormat: "ddd MMM d",
+        // One point under the 10 pt system font. The stock clock sizes date and time together.
+        autoFontAndSize: false, fontSize: 9}});
 
     var dock = new Panel;
     dock.screen = s;
