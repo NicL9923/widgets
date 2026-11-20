@@ -20,9 +20,9 @@ CONFIG_FILES=(kdeglobals kwinrc plasma-org.kde.plasma.desktop-appletsrc plasmash
   xsettingsd Kvantum)
 
 [[ -f "$config_dir/$layout_file" ]] || { echo "no Plasma layout in $config_dir; is this a Plasma session?" >&2; exit 1; }
-session_dir="$(systemctl --user show-environment | sed -n 's/^XDG_CONFIG_HOME=//p')"
-if [[ "$(realpath -m "${session_dir:-$HOME/.config}")" != "$(realpath -m "$config_dir")" ]]; then
-  echo "this shell uses $config_dir but Plasma reads ${session_dir:-$HOME/.config}; nothing changed" >&2
+session_dir="$(python3 "$here/session-config-dir.py")"
+if [[ "$session_dir" != "$(realpath -m "$config_dir")" ]]; then
+  echo "this shell uses $config_dir but Plasma reads $session_dir; nothing changed" >&2
   exit 1
 fi
 

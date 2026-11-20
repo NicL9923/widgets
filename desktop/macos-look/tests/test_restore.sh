@@ -19,20 +19,27 @@ setup() {
   echo saved-globals > "$work/backup/config/kdeglobals"
   echo Kvantum > "$work/backup/absent"
   : > "$work/calls"
-  # systemctl logs each call; STUB_START_FAILS makes every "start" fail.
+  # systemctl logs each call. STUB_START_NEEDS, when set, makes "start" succeed only while
+  # the live layout file holds that text, standing in for a layout plasmashell cannot load.
   cat > "$work/bin/systemctl" <<STUB
 #!/usr/bin/env bash
 echo "systemctl \$*" >> "$work/calls"
-[[ "\$*" == *show-environment* ]] && exit 0
-[[ "\$*" == *start* && -n "\${STUB_START_FAILS:-}" ]] && exit 1
+if [[ "\$*" == *start* && -n "\${STUB_START_NEEDS:-}" ]]; then
+  [[ "\$(cat "$cfg/plasma-org.kde.plasma.desktop-appletsrc")" == "\$STUB_START_NEEDS" ]] || exit 1
+fi
 exit 0
+STUB
+  # The session's environment as systemd's D-Bus API returns it: raw strings.
+  cat > "$work/bin/busctl" <<STUB
+#!/usr/bin/env bash
+printf '{"type":"as","data":["HOME=%s"%s]}\n' "\$HOME" "\${STUB_SESSION_CONFIG:+,\"XDG_CONFIG_HOME=\$STUB_SESSION_CONFIG\"}"
 STUB
   for tool in kreadconfig6 plasma-apply-colorscheme plasma-apply-cursortheme qdbus-qt6 changeicons; do
     printf '#!/usr/bin/env bash\nexit 0\n' > "$work/bin/$tool"
   done
   chmod +x "$work/bin"/*
   export PATH="$work/bin:$PATH" PLASMA_CHANGEICONS="$work/bin/changeicons"
-  unset XDG_CONFIG_HOME STUB_START_FAILS
+  unset XDG_CONFIG_HOME STUB_START_NEEDS STUB_SESSION_CONFIG
 }
 
 check() {
@@ -56,9 +63,19 @@ chmod 644 "$work/backup/config/kdeglobals"
 rm -rf "$work"
 
 setup
-STUB_START_FAILS=1 "$here/restore.sh" "$work/backup" >/dev/null 2>&1 || true
-check "failed start retries the shell" '[[ "$(grep -c "start plasma-plasmashell" "$work/calls")" -ge 2 ]]'
-check "failed start keeps the previous files" '[[ -n "$(ls "$cfg"/.restore-rollback.*/ 2>/dev/null)" ]]'
+STUB_START_NEEDS=old-layout "$here/restore.sh" "$work/backup" >/dev/null 2>&1 && status=0 || status=$?
+check "shell that fails on the snapshot gets the previous layout back" '[[ "$(cat "$cfg/plasma-org.kde.plasma.desktop-appletsrc")" == old-layout && -e "$cfg/Kvantum" ]]'
+check "shell is started again with the previous layout" '[[ "$(grep -c "start plasma-plasmashell" "$work/calls")" -ge 2 ]]'
+check "a rolled-back restore reports failure" '[[ $status -ne 0 ]]'
+check "a rolled-back restore leaves no temp dirs" '[[ -z "$(ls -A "$cfg" | grep restore-)" ]]'
+rm -rf "$work"
+
+setup
+mkdir -p "$work/my config"
+cp -a "$cfg/." "$work/my config/"
+echo "$work/my config" > "$work/backup/config-dir"
+STUB_SESSION_CONFIG="$work/my config" "$here/restore.sh" "$work/backup" >/dev/null 2>&1
+check "config directory with a space is accepted" '[[ "$(cat "$work/my config/kdeglobals")" == saved-globals ]]'
 rm -rf "$work"
 
 setup

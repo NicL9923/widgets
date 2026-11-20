@@ -99,7 +99,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Check shell syntax
-        run: bash -n desktop/macos-look/*.sh
+        run: for script in desktop/macos-look/*.sh desktop/macos-look/tests/*.sh; do bash -n "$script"; done
       - name: Test restore against a stubbed session
         run: bash desktop/macos-look/tests/test_restore.sh
 

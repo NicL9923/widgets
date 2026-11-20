@@ -8,9 +8,8 @@ layout_file="plasma-org.kde.plasma.desktop-appletsrc"
 config_dir="$(cat "$backup/config-dir" 2>/dev/null || echo "${XDG_CONFIG_HOME:-$HOME/.config}")"
 
 # Restore into the directory the running Plasma session reads, or not at all.
-session_dir="$(systemctl --user show-environment | sed -n 's/^XDG_CONFIG_HOME=//p')"
-session_dir="${session_dir:-$HOME/.config}"
-if [[ "$(realpath -m "$session_dir")" != "$(realpath -m "$config_dir")" ]]; then
+session_dir="$(python3 "$(dirname "${BASH_SOURCE[0]}")/session-config-dir.py")"
+if [[ "$session_dir" != "$(realpath -m "$config_dir")" ]]; then
   echo "snapshot is for $config_dir but Plasma reads $session_dir; nothing changed" >&2
   exit 1
 fi
@@ -35,10 +34,10 @@ finish() {
     done
   fi
   # Whatever happened above, never leave the desktop without a shell.
-  if [[ "$stopped" == true ]] && ! systemctl --user start plasma-plasmashell.service; then
-    echo "plasmashell did not start; previous files kept in $rollback" >&2
-    rm -rf "$stage"
-    return
+  if [[ "$stopped" == true && "$restored" != true ]] \
+      && ! systemctl --user start plasma-plasmashell.service; then
+    echo "plasmashell did not start even with the previous files." >&2
+    echo "Check $config_dir, then run: systemctl --user start plasma-plasmashell.service" >&2
   fi
   rm -rf "$stage"
   if [[ "$restored" == true || -z "$(ls -A "$rollback")" ]]; then
@@ -71,8 +70,10 @@ if [[ -f "$backup/absent" ]]; then
     fi
   done < "$backup/absent"
 fi
-restored=true
+# Only a shell that starts counts as restored. Otherwise the exit handler puts the previous
+# files back and starts the shell with them.
 systemctl --user start plasma-plasmashell.service
+restored=true
 
 # Push the restored appearance into the running session.
 scheme="$(kreadconfig6 --file kdeglobals --group General --key ColorScheme)"
