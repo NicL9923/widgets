@@ -2,13 +2,14 @@
 # Put back a setup saved by apply.sh: restore.sh ~/.local/share/desktop-backups/pre-macos-look-…
 set -euo pipefail
 
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 backup="${1:?usage: restore.sh BACKUP_DIR (apply.sh prints it)}"
 layout_file="plasma-org.kde.plasma.desktop-appletsrc"
 [[ -f "$backup/config/$layout_file" ]] || { echo "no Plasma layout in $backup/config" >&2; exit 1; }
 config_dir="$(cat "$backup/config-dir" 2>/dev/null || echo "${XDG_CONFIG_HOME:-$HOME/.config}")"
 
 # Restore into the directory the running Plasma session reads, or not at all.
-session_dir="$(python3 "$(dirname "${BASH_SOURCE[0]}")/session-config-dir.py")"
+session_dir="$(python3 "$here/session-config-dir.py")"
 if [[ "$session_dir" != "$(realpath -m "$config_dir")" ]]; then
   echo "snapshot is for $config_dir but Plasma reads $session_dir; nothing changed" >&2
   exit 1
@@ -83,4 +84,10 @@ plasma-apply-cursortheme "${cursor:-breeze_cursors}" || true
 icons="$(kreadconfig6 --file kdeglobals --group Icons --key Theme)"
 "${PLASMA_CHANGEICONS:-/usr/libexec/plasma-changeicons}" "${icons:-breeze}" || true
 qdbus-qt6 org.kde.KWin /KWin reconfigure || true
+# Shortcuts live in kglobalaccel's memory, so the restored kglobalshortcutsrc alone does not
+# drop the Meta+S that apply.sh added.
+if ! grep -qs '^_launch=.*Meta+S' "$backup/config/kglobalshortcutsrc"; then
+  "$here/spotlight-shortcut.py" remove || true
+fi
+pkill -x krunner || true
 echo "Restored $backup. Log out and back in to refresh every running app's style."

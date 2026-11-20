@@ -34,7 +34,11 @@ STUB
 #!/usr/bin/env bash
 printf '{"type":"as","data":["HOME=%s"%s]}\n' "\$HOME" "\${STUB_SESSION_CONFIG:+,\"XDG_CONFIG_HOME=\$STUB_SESSION_CONFIG\"}"
 STUB
-  for tool in kreadconfig6 plasma-apply-colorscheme plasma-apply-cursortheme qdbus-qt6 changeicons; do
+  cat > "$work/bin/gdbus" <<STUB
+#!/usr/bin/env bash
+echo "gdbus \$*" >> "$work/calls"
+STUB
+  for tool in kreadconfig6 plasma-apply-colorscheme plasma-apply-cursortheme qdbus-qt6 changeicons pkill; do
     printf '#!/usr/bin/env bash\nexit 0\n' > "$work/bin/$tool"
   done
   chmod +x "$work/bin"/*
@@ -51,6 +55,7 @@ setup
 check "restores saved files" '[[ "$(cat "$cfg/plasma-org.kde.plasma.desktop-appletsrc")" == saved-layout && "$(cat "$cfg/kdeglobals")" == saved-globals ]]'
 check "removes files apply created" '[[ ! -e "$cfg/Kvantum" ]]'
 check "starts plasmashell" 'grep -q "start plasma-plasmashell" "$work/calls"'
+check "drops the Meta+S shortcut" 'grep -q "setForeignShortcutKeys.*@a(ai) \[\]" "$work/calls"'
 check "leaves no temp dirs" '[[ -z "$(ls -A "$cfg" | grep restore-)" ]]'
 rm -rf "$work"
 

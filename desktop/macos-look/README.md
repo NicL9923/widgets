@@ -9,7 +9,10 @@
   modules, [Device Battery](../../device-battery/), [AI Usage](../../ai-usage/), weather,
   tray, and a "Thu Nov 19 19:23" clock.
 - A floating dock on every screen with your existing task manager launchers. Each dock lists
-  every open window, so you can raise one from whichever monitor you are looking at.
+  every open window, so you can raise one from whichever monitor you are looking at. A dock
+  flattens onto the screen edge while a maximized window touches it. Stock Plasma only keeps a
+  dock hovering if windows may cover it or it hides, so this keeps the space reserved instead.
+- Spotlight on Meta+S: KRunner, centered on the current screen. Its other shortcuts stay.
 - Magic Lamp minimize.
 
 It snapshots the files it changes to `~/.local/share/desktop-backups/` first and prints the
@@ -27,3 +30,5 @@ restore command. `restore.sh BACKUP_DIR` puts everything back.
 
 `layout.js` is a Plasma shell script. `carry.py` reads settings worth keeping, such as
 launchers, the weather location, and clock time zones, from the panels it replaces.
+`spotlight-shortcut.py add|remove` changes the Meta+S shortcut over D-Bus, because
+kglobalaccel ignores edits to `kglobalshortcutsrc` while the session runs.

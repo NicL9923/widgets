@@ -17,7 +17,7 @@ declare -A pins=(
 )
 CONFIG_FILES=(kdeglobals kwinrc plasma-org.kde.plasma.desktop-appletsrc plasmashellrc kcminputrc
   kglobalshortcutsrc plasmarc kwinrulesrc kscreenlockerrc gtk-3.0 gtk-4.0 gtkrc gtkrc-2.0
-  xsettingsd Kvantum)
+  xsettingsd Kvantum krunnerrc)
 
 [[ -f "$config_dir/$layout_file" ]] || { echo "no Plasma layout in $config_dir; is this a Plasma session?" >&2; exit 1; }
 session_dir="$(python3 "$here/session-config-dir.py")"
@@ -82,6 +82,11 @@ kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key ButtonsOnRight ""
 kwriteconfig6 --file kwinrc --group Plugins --key magiclampEnabled true
 kwriteconfig6 --file kwinrc --group Plugins --key squashEnabled false
 qdbus-qt6 org.kde.KWin /KWin reconfigure
+
+echo "==> Spotlight: KRunner centered on screen, on Meta+S"
+kwriteconfig6 --file krunnerrc --group General --key FreeFloating true
+pkill -x krunner || true  # it reads krunnerrc at start and is restarted on demand
+"$here/spotlight-shortcut.py" add
 
 echo "==> Building the menu bars and docks"
 qdbus-qt6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "var CARRY = $carry;
