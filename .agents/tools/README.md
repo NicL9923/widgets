@@ -1,4 +1,4 @@
 # Repository tools
 
-- `plasma-visual-harness.sh` launches a uniquely named, fixture-fed applet and captures its QML pixels without touching the installed widget. Set `AI_USAGE_VISUAL_PRESENTATION` to `horizontal` or `vertical` to exercise a temporary panel; it is removed on exit.
-- `check-macos-app.py`: launch the built app, verify loading-to-result menu bar updates through macOS accessibility, check the bundle signature, and stop only the test process. Requires a logged-in GUI session and accessibility access.
+- `plasma-capture.sh PLASMOID_DIR OUTPUT.png [full|horizontal|vertical] [seconds]` installs a uniquely named temporary copy of any applet in this repo, captures its popup (`full`, via `plasmawindowed`) or its panel representation (a throwaway top or left panel), and removes both on exit. It grabs only the applet's own pixels.
+- Widget-specific tools live in each widget's `.agents/tools/`.

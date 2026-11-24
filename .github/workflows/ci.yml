@@ -6,8 +6,8 @@ on:
   pull_request:
 
 jobs:
-  helper:
-    name: Helper (Python ${{ matrix.python-version }})
+  python:
+    name: Python helpers (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -22,7 +22,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install
-        run: pip install -e '.[dev]'
+        run: pip install -e './ai-usage[dev]' -e './device-battery[dev]'
 
       - name: Lint
         run: ruff check --output-format=github .
@@ -30,44 +30,49 @@ jobs:
       - name: Format
         run: ruff format --check .
 
-      - name: Test
+      - name: Test ai-usage
+        working-directory: ai-usage
         run: pytest
 
-  plasmoid:
-    name: Plasmoid
+      - name: Test device-battery
+        working-directory: device-battery
+        run: pytest
+
+  plasmoids:
+    name: Plasmoids
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
-      - name: Test widget state and refresh scheduling
-        run: node --test tests/test_ui.cjs
+      - name: Test widget logic
+        run: node --test ai-usage/tests/*.cjs device-battery/tests/*.cjs system-stats/tests/*.cjs
 
-      - name: Validate applet metadata
-        run: python3 -c "import json; m = json.load(open('plasmoid/metadata.json')); assert m['KPackageStructure'] == 'Plasma/Applet'; assert m['KPlugin']['Id']"
-
-      - name: Check applet package layout
+      - name: Validate applet packages
         run: |
           set -eu
-          for required in \
-            plasmoid/contents/ui/main.qml \
-            plasmoid/contents/ui/CompactRepresentation.qml \
-            plasmoid/contents/ui/FullRepresentation.qml \
-            plasmoid/contents/ui/configGeneral.qml \
-            plasmoid/contents/config/main.xml \
-            plasmoid/contents/config/config.qml
-          do
-            test -f "$required" || { echo "missing $required"; exit 1; }
+          ids=""
+          for widget in ai-usage device-battery system-stats; do
+            dir="$widget/plasmoid"
+            for required in metadata.json contents/ui/main.qml contents/ui/CompactRepresentation.qml \
+                contents/ui/FullRepresentation.qml contents/ui/configGeneral.qml \
+                contents/config/main.xml contents/config/config.qml; do
+              test -f "$dir/$required" || { echo "missing $dir/$required"; exit 1; }
+            done
+            id=$(python3 -c "import json,sys; m = json.load(open(sys.argv[1])); assert m['KPackageStructure'] == 'Plasma/Applet'; print(m['KPlugin']['Id'])" "$dir/metadata.json")
+            case " $ids " in *" $id "*) echo "duplicate applet id $id"; exit 1 ;; esac
+            ids="$ids $id"
           done
 
       - name: Check config keys are backed by main.xml
         run: |
           set -eu
           missing=0
-          for key in $(grep -ohP 'Plasmoid\.configuration\.\K\w+' plasmoid/contents/ui/*.qml | sort -u); do
-            grep -q "name=\"$key\"" plasmoid/contents/config/main.xml || { echo "config key not declared: $key"; missing=1; }
-          done
-          for key in $(grep -ohP 'property alias cfg_\K\w+' plasmoid/contents/ui/*.qml | sort -u); do
-            grep -q "name=\"$key\"" plasmoid/contents/config/main.xml || { echo "config key not declared: $key"; missing=1; }
+          for widget in ai-usage device-battery system-stats; do
+            dir="$widget/plasmoid/contents"
+            for key in $(grep -rohP 'Plasmoid\.configuration\.\K\w+' "$dir/ui" | sort -u) \
+                       $(grep -rohP 'property (alias|string|int|bool|var) cfg_\K\w+' "$dir/ui" | sort -u); do
+              grep -q "name=\"$key\"" "$dir/config/main.xml" || { echo "$widget: config key not declared: $key"; missing=1; }
+            done
           done
           exit $missing
 
@@ -79,7 +84,7 @@ jobs:
           # Plasma and Kirigami modules are not available on the runner, so unresolved
           # imports are expected. Fail only on syntax errors.
           status=0
-          for file in $(find plasmoid -name '*.qml'); do
+          for file in $(find */plasmoid -name '*.qml'); do
             output=$("$qmllint" --bare "$file" 2>&1) || true
             if echo "$output" | grep -qE 'Syntax error|Expected token'; then
               echo "$output"
@@ -88,9 +93,22 @@ jobs:
           done
           exit $status
 
+  desktop:
+    name: Desktop scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check shell syntax
+        run: for script in desktop/macos-look/*.sh desktop/macos-look/tests/*.sh; do bash -n "$script"; done
+      - name: Test restore against a stubbed session
+        run: bash desktop/macos-look/tests/test_restore.sh
+
   macos:
-    name: macOS menu bar
+    name: macOS menu bar (ai-usage)
     runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ai-usage
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7

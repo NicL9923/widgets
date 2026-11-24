@@ -1,0 +1,15 @@
+{
+  "KPackageStructure": "Plasma/Applet",
+  "KPlugin": {
+    "Id": "com.nicl9923.systemstats",
+    "Name": "System Stats",
+    "Description": "CPU, GPU, memory, disk, network, and sensor readings in the style of Stats for macOS",
+    "Icon": "utilities-system-monitor",
+    "Version": "0.1.0",
+    "License": "MIT",
+    "Category": "System Information",
+    "Website": "https://github.com/NicL9923/widgets",
+    "Authors": [{ "Name": "Nicolas Layne" }]
+  },
+  "X-Plasma-API-Minimum-Version": "6.0"
+}
