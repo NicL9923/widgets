@@ -8,7 +8,7 @@ enum ProviderMark {
     /// A template image, so callers tint it. Nil when the bundled SVG is missing or unreadable.
     static func image(_ id: String) -> NSImage? {
         if let cached = cache[id] { return cached }
-        guard let url = Bundle.main.url(forResource: id, withExtension: "svg", subdirectory: "icons"),
+        guard let url = Bundle.main.url(forResource: "aiusage-mark-\(id)", withExtension: "svg", subdirectory: "icons"),
               let image = NSImage(contentsOf: url), image.isValid else { return nil }
         image.isTemplate = true
         cache[id] = image
