@@ -1,6 +1,6 @@
 import AppKit
 
-/// Provider marks shared with the Plasma applet (Simple Icons and SVG Logos, both CC0).
+/// Provider marks shared with the Plasma applet.
 @MainActor
 enum ProviderMark {
     private static var cache: [String: NSImage] = [:]
@@ -97,14 +97,6 @@ func menuBarImage(for entries: [MenuEntry]) -> NSImage {
             let markSize = (Metrics.ring - Metrics.stroke * 2) * 0.8
             ProviderMark.draw(marks[index], in: NSRect(x: center.x - markSize / 2, y: center.y - markSize / 2,
                                                    width: markSize, height: markSize), color: label)
-
-            if entry.nearLimit, UsageLevel(entry.usedPercent ?? 0) != .critical {
-                // Another limit is critical even though the primary ring may look calm.
-                let dot: CGFloat = 5
-                NSColor.systemRed.setFill()
-                NSBezierPath(ovalIn: NSRect(x: ringRect.maxX - dot + 1, y: ringRect.maxY - dot + 1,
-                                            width: dot, height: dot)).fill()
-            }
 
             let text = NSAttributedString(string: entry.percentText, attributes: [
                 .font: font,

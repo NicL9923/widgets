@@ -9,9 +9,9 @@ MouseArea {
     id: compact
 
     readonly property bool vertical: Plasmoid.formFactor === PlasmaCore.Types.Vertical
-    // Keep every enabled provider in the layout. A failed probe must not make the other
+    // Keep every selected provider in the layout. A failed probe must not make the other
     // entries jump sideways, and an absent reading is never drawn as a 0% ring.
-    readonly property var entries: root.providers
+    readonly property var entries: root.panelProviders
     readonly property bool showLogos: Plasmoid.configuration.showProviderLogos
     readonly property int fallbackSize: Kirigami.Units.iconSizes.small
     // Logos need interior room, so the ring grows a little when they are shown.
@@ -68,7 +68,6 @@ MouseArea {
 
                 required property var modelData
                 readonly property bool hasReading: modelData.hasReading === true
-                readonly property string warning: root.providerWarning(modelData)
                 readonly property string statusText: hasReading
                     ? i18n("%1%", Math.round(modelData.primaryUsedPercent))
                     : "—"
@@ -111,43 +110,12 @@ MouseArea {
                         anchors.centerIn: parent
                         width: Math.max(Kirigami.Units.iconSizes.small, parent.width * 0.62)
                         height: width
-                        visible: !providerEntry.hasReading && root.loaded
-                        source: "dialog-warning"
-                        color: Kirigami.Theme.negativeTextColor
-                    }
-
-                    Kirigami.Icon {
-                        anchors.centerIn: parent
-                        width: Math.max(Kirigami.Units.iconSizes.small, parent.width * 0.62)
-                        height: width
-                        visible: !providerEntry.hasReading && !root.loaded
+                        visible: !providerEntry.hasReading
                         source: compact.showLogos
                             ? root.providerMark(providerEntry.modelData.id)
                             : "speedometer"
                         color: Kirigami.Theme.disabledTextColor
                         isMask: true
-                    }
-
-                    Kirigami.Icon {
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        width: Kirigami.Units.iconSizes.small
-                        height: width
-                        visible: providerEntry.warning !== ""
-                        source: "dialog-warning"
-                        color: Kirigami.Theme.negativeTextColor
-
-                        MouseArea {
-                            anchors.fill: parent
-                            acceptedButtons: Qt.NoButton
-                            hoverEnabled: true
-
-                            PlasmaComponents.ToolTip {
-                                text: providerEntry.warning
-                                visible: parent.containsMouse
-                                delay: Kirigami.Units.toolTipDelay
-                            }
-                        }
                     }
                 }
 
@@ -185,13 +153,15 @@ MouseArea {
                 }
 
                 MouseArea {
+                    id: providerHover
+
                     anchors.fill: parent
                     acceptedButtons: Qt.NoButton
                     hoverEnabled: true
 
                     PlasmaComponents.ToolTip {
                         text: root.providerSummary(providerEntry.modelData)
-                        visible: parent.containsMouse
+                        visible: providerHover.containsMouse
                         delay: Kirigami.Units.toolTipDelay
                     }
                 }
@@ -199,13 +169,12 @@ MouseArea {
         }
     }
 
-    // Keep the applet discoverable before the first result, with no providers selected,
-    // or after a helper-level failure.
+    // Leave a target for reopening the popup when all providers are hidden.
     Kirigami.Icon {
         anchors.centerIn: parent
         width: compact.fallbackSize
         height: width
-        source: root.helperError !== "" ? "dialog-warning" : "speedometer"
+        source: "speedometer"
         visible: compact.entries.length === 0
     }
 

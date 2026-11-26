@@ -17,6 +17,18 @@
     <entry name="showGrok" type="Bool">
       <default>true</default>
     </entry>
+    <entry name="showCodexInPanel" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showClaudeInPanel" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showGrokInPanel" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showAntigravityInPanel" type="Bool">
+      <default>false</default>
+    </entry>
     <entry name="showProviderLabels" type="Bool">
       <default>false</default>
     </entry>

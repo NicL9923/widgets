@@ -14,8 +14,8 @@ Claude Code, Codex, and Grok subscription usage in your KDE Plasma panel or macO
 
 Each provider gets a usage ring in the panel. Open the widget to see every rate-limit
 window, its reset time, and any Codex resets you have banked. Rings turn orange at 70% and
-red at 85%. A warning badge names any window at 85% or higher, including weekly and
-model-specific limits, while the ring continues to show the primary window. Claude Code
+red at 85%. The ring shows the primary window. Hover over a provider to see its other
+windows, including weekly and model-specific limits. Claude Code
 doesn't report Claude's banked resets, so the Claude entry links to claude.ai's usage page
 instead.
 
@@ -55,13 +55,16 @@ cd widgets/ai-usage
 The installer builds a native app for your Mac, installs it to `~/Applications/AI Usage.app`,
 and opens it. There is no Dock icon. The menu bar shows each provider's logo inside a ring
 that fills with its primary usage, followed by the percentage. Rings turn orange from 70%
-and red from 85%. A red dot means another window is at 85% or higher, a faded ring means a
-stale reading, and `–` means unavailable. Click it for every window, reset time, banked
+and red from 85%. A faded ring means a stale reading, and `–` means unavailable.
+Click the menu bar item for every window, reset time, banked
 Codex reset, and error. Expired windows disappear even when a refresh fails.
 
-Use the gear menu to hide providers and keep the menu bar compact on a MacBook Pro.
-The refresh button bypasses the five-minute helper cache. **Launch at login** in the same
-menu is optional and uses macOS login items. The app checks once per minute and after wake.
+Use **Show in menu bar** on each provider card. Hidden providers keep refreshing and
+remain in the popup. Antigravity uses the [official icon](https://antigravity.google/press)
+and appears as a placeholder pending usage reporting over ACP. Its menu bar entry is
+off by default.
+The refresh button bypasses the five-minute helper cache. **Launch at login** is in the
+gear menu and uses macOS login items. The app checks once per minute and after wake.
 
 The app contains its own copy of the helper. It retains the Python executable and
 terminal PATH from installation so Finder and login launches can find your CLIs.
@@ -110,9 +113,14 @@ git pull
 Right-click the widget and choose **Configure AI Usage** to select providers, change the
 refresh interval, or show provider names. Middle-click the widget to refresh immediately.
 
+In the popup, use **Show in panel** to hide or restore each provider's panel entry.
+Hidden entries remain in the popup and keep refreshing. Antigravity appears as a
+placeholder while it awaits usage reporting over ACP. Its panel entry is off by default
+and uses the [official Antigravity icon](https://antigravity.google/press).
+
 The helper caches readings under `$XDG_CACHE_HOME/ai-usage-widget/`. One provider failing
 does not block the others, and a failed refresh keeps the last good value visible and marked stale, with its age and the
-refresh error. Enabled providers without readings keep their place in the panel and show
+refresh error. Providers shown in the panel without readings keep their place and show
 an unavailable marker.
 
 The popup shows relative reset times, with exact local timestamps on hover. Once a
@@ -144,7 +152,7 @@ Run a provider probe directly to see its error:
 ai-usage --provider claude --refresh --plain
 ```
 
-- **Warning icon.** Hover it for the helper error. Check that `~/.local/bin/ai-usage`
+- **Helper error.** Open the popup to see the error. Check that `~/.local/bin/ai-usage`
   exists and that the configured helper path is correct.
 - **Unavailable provider.** Confirm that its CLI can show subscription usage and is signed
   in. If the widget says you are signed out of Grok, run `grok login`. Grok can also omit

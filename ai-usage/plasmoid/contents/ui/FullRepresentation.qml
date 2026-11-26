@@ -69,24 +69,12 @@ PlasmaExtras.Representation {
             width: scroll.contentWidth
             spacing: Kirigami.Units.largeSpacing
 
-            RowLayout {
+            PlasmaComponents.Label {
                 Layout.fillWidth: true
                 visible: root.helperError !== ""
-                spacing: Kirigami.Units.smallSpacing
-
-                Kirigami.Icon {
-                    Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                    Layout.preferredHeight: Kirigami.Units.iconSizes.small
-                    source: "dialog-warning"
-                    color: Kirigami.Theme.negativeTextColor
-                }
-
-                PlasmaComponents.Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: Kirigami.Theme.negativeTextColor
-                    text: root.helperError
-                }
+                wrapMode: Text.WordWrap
+                color: Kirigami.Theme.negativeTextColor
+                text: root.helperError
             }
 
             Repeater {
@@ -96,13 +84,11 @@ PlasmaExtras.Representation {
                     id: providerCard
 
                     required property var modelData
-                    readonly property bool hasReading: modelData.hasReading === true
-                    readonly property string warning: root.providerWarning(modelData)
+                    readonly property var usage: root.providerUsage(modelData)
+                    readonly property bool hasReading: usage.hasReading === true
 
                     Layout.fillWidth: true
-                    visible: root.loaded
                     spacing: Kirigami.Units.smallSpacing
-                    opacity: modelData.stale ? 0.6 : 1
 
                     RowLayout {
                         Layout.fillWidth: true
@@ -120,27 +106,15 @@ PlasmaExtras.Representation {
                             Layout.fillWidth: true
                             level: 4
                             text: modelData.displayName
-                            Accessible.description: root.providerSummary(modelData)
+                            elide: Text.ElideRight
+                            Accessible.description: root.providerSummary(providerCard.usage)
                         }
 
-                        Kirigami.Icon {
-                            Layout.preferredWidth: Kirigami.Units.iconSizes.small
-                            Layout.preferredHeight: Kirigami.Units.iconSizes.small
-                            visible: providerCard.warning !== ""
-                            source: "dialog-warning"
-                            color: Kirigami.Theme.negativeTextColor
-
-                            MouseArea {
-                                anchors.fill: parent
-                                acceptedButtons: Qt.NoButton
-                                hoverEnabled: true
-
-                                PlasmaComponents.ToolTip {
-                                    text: providerCard.warning
-                                    visible: parent.containsMouse
-                                    delay: Kirigami.Units.toolTipDelay
-                                }
-                            }
+                        PlasmaComponents.Switch {
+                            text: i18n("Show in panel")
+                            Accessible.name: i18n("Show in panel (%1)", providerCard.modelData.displayName)
+                            checked: Plasmoid.configuration[providerCard.modelData.panelKey]
+                            onToggled: Plasmoid.configuration[providerCard.modelData.panelKey] = checked
                         }
                     }
 
@@ -149,8 +123,8 @@ PlasmaExtras.Representation {
                         visible: providerCard.hasReading
                         horizontalAlignment: Text.AlignRight
                         font: Kirigami.Theme.smallFont
-                        opacity: 0.7
-                        text: root.updatedText(modelData)
+                        opacity: usage.stale ? 0.6 : 0.7
+                        text: root.updatedText(usage)
 
                         MouseArea {
                             id: updatedHover
@@ -160,7 +134,7 @@ PlasmaExtras.Representation {
                             hoverEnabled: true
 
                             PlasmaComponents.ToolTip {
-                                text: root.formatReset(modelData.checkedAt)
+                                text: root.formatReset(providerCard.usage.checkedAt)
                                 visible: updatedHover.containsMouse && text !== ""
                                 delay: Kirigami.Units.toolTipDelay
                             }
@@ -169,18 +143,19 @@ PlasmaExtras.Representation {
 
                     PlasmaComponents.Label {
                         Layout.fillWidth: true
-                        visible: !providerCard.hasReading || modelData.error
+                        visible: !!modelData.placeholderText
+                                 || (root.loaded && (!providerCard.hasReading || !!usage.error))
                         wrapMode: Text.WordWrap
                         font: Kirigami.Theme.smallFont
-                        color: Kirigami.Theme.negativeTextColor
-                        text: modelData.error || i18n("Unavailable")
+                        color: modelData.placeholderText ? Kirigami.Theme.textColor : Kirigami.Theme.negativeTextColor
+                        text: modelData.placeholderText || usage.error || i18n("Unavailable")
                     }
 
                     ColumnLayout {
                         Layout.fillWidth: true
                         Layout.topMargin: Kirigami.Units.largeSpacing
-                        visible: providerCard.hasReading && modelData.bankedResets !== null
-                                 && modelData.bankedResets !== undefined
+                        visible: providerCard.hasReading && !!usage.bankedResets
+                        opacity: usage.stale ? 0.6 : 1
                         spacing: 0
 
                         RowLayout {
@@ -192,15 +167,15 @@ PlasmaExtras.Representation {
                             }
 
                             PlasmaComponents.Label {
-                                text: modelData.bankedResets
-                                    ? i18n("%1 available", modelData.bankedResets.availableCount)
+                                text: providerCard.usage.bankedResets
+                                    ? i18n("%1 available", providerCard.usage.bankedResets.availableCount)
                                     : ""
                                 color: Kirigami.Theme.highlightColor
                             }
                         }
 
                         Repeater {
-                            model: modelData.bankedResets ? modelData.bankedResets.credits : []
+                            model: providerCard.usage.bankedResets ? providerCard.usage.bankedResets.credits : []
 
                             PlasmaComponents.Label {
                                 required property var modelData
@@ -234,13 +209,14 @@ PlasmaExtras.Representation {
                     }
 
                     Repeater {
-                        model: providerCard.hasReading ? modelData.windows : []
+                        model: providerCard.hasReading ? providerCard.usage.windows : []
 
                         ColumnLayout {
                             required property var modelData
 
                             Layout.fillWidth: true
                             Layout.topMargin: Kirigami.Units.largeSpacing
+                            opacity: providerCard.usage.stale ? 0.6 : 1
                             spacing: 0
 
                             RowLayout {
@@ -322,17 +298,8 @@ PlasmaExtras.Representation {
                 Layout.topMargin: Kirigami.Units.gridUnit * 2
                 visible: !root.anyProviderEnabled
                 iconName: "speedometer"
-                text: i18n("No providers selected")
+                text: i18n("No usage providers enabled")
                 explanation: i18n("Choose at least one provider in the widget settings.")
-            }
-
-            PlasmaExtras.PlaceholderMessage {
-                Layout.fillWidth: true
-                Layout.topMargin: Kirigami.Units.gridUnit * 2
-                visible: root.loaded && root.anyProviderEnabled && root.providers.length === 0
-                iconName: root.helperError !== "" ? "dialog-warning" : "speedometer"
-                text: root.helperError !== "" ? i18n("Helper unavailable") : i18n("No usage data")
-                explanation: root.helperError !== "" ? root.helperError : i18n("Check that the ai-usage helper is installed and that you are signed in to a subscription plan.")
             }
         }
     }
