@@ -63,8 +63,8 @@ Use **Show in menu bar** on each provider card. Hidden providers keep refreshing
 remain in the popup. Antigravity uses the [official icon](https://antigravity.google/press)
 and appears as a placeholder pending usage reporting over ACP. Its menu bar entry is
 off by default.
-The refresh button bypasses the five-minute helper cache. **Launch at login** in the same
-menu is optional and uses macOS login items. The app checks once per minute and after wake.
+The refresh button bypasses the five-minute helper cache. **Launch at login** is in the
+gear menu and uses macOS login items. The app checks once per minute and after wake.
 
 The app contains its own copy of the helper. It retains the Python executable and
 terminal PATH from installation so Finder and login launches can find your CLIs.
