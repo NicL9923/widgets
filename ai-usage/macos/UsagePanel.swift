@@ -84,10 +84,6 @@ struct WindowRow: View {
             HStack(spacing: 4) {
                 Text(window.label).lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 8)
-                if level == .critical {
-                    Image(systemName: "exclamationmark.triangle.fill").imageScale(.small)
-                        .accessibilityLabel("Near usage limit")
-                }
                 Text(percent(window.usedPercent)).monospacedDigit().fontWeight(.medium)
             }
             .font(.callout)
@@ -110,10 +106,13 @@ struct ProviderCard: View {
     let date: Date
     let busy: Bool
     let helperFailed: Bool
+    let placeholder: String?
+    @Binding var showInMenuBar: Bool
 
     private var primary: UsageWindow? { provider?.primary(at: date) }
 
     private var subtitle: String {
+        if let placeholder { return placeholder }
         guard provider != nil else {
             return busy ? "Checking usage…" : "No reading yet. Check that the CLI is signed in."
         }
@@ -132,7 +131,14 @@ struct ProviderCard: View {
         let stale = primary != nil && (provider?.stale == true || helperFailed)
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                UsageRing(id: id, usedPercent: primary?.usedPercent).opacity(stale ? 0.55 : 1)
+                if placeholder != nil {
+                    ProviderLogo(id: id)
+                        .frame(width: 20, height: 20)
+                        .frame(width: 40, height: 40)
+                        .foregroundStyle(.secondary)
+                } else {
+                    UsageRing(id: id, usedPercent: primary?.usedPercent).opacity(stale ? 0.55 : 1)
+                }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(name).font(.headline)
                     Text(subtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
@@ -152,6 +158,13 @@ struct ProviderCard: View {
                 }
             }
             .accessibilityElement(children: .combine)
+
+            Toggle("Show in menu bar", isOn: $showInMenuBar)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .font(.caption)
+                .accessibilityLabel("Show in menu bar for \(name)")
+                .frame(maxWidth: .infinity, alignment: .trailing)
 
             let others = provider?.secondaryWindows(at: date) ?? []
             ForEach(Array(others.enumerated()), id: \.offset) { _, window in
@@ -182,7 +195,7 @@ struct ProviderCard: View {
             }
 
             if let notice {
-                Label(notice, systemImage: stale ? "clock.arrow.circlepath" : "exclamationmark.circle")
+                Text(notice)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)
@@ -204,8 +217,7 @@ struct UsagePanel: View {
     @ObservedObject var model: UsageModel
 
     private var lastChecked: Date? {
-        let enabled = Set(model.enabled)
-        return model.report?.providers.filter { enabled.contains($0.id) && !$0.windows.isEmpty }
+        model.report?.providers.filter { UsageProvider.polledIDs.contains($0.id) && !$0.windows.isEmpty }
             .compactMap { parseTimestamp($0.checkedAt) }.min()
     }
 
@@ -214,7 +226,7 @@ struct UsagePanel: View {
             VStack(alignment: .leading, spacing: 12) {
                 header
                 if let error = model.helperError {
-                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                    Text(error)
                         .font(.callout)
                         .textSelection(.enabled)
                         .padding(10)
@@ -222,33 +234,26 @@ struct UsagePanel: View {
                         .background(Color.orange.opacity(0.14),
                                     in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
-                if model.enabled.isEmpty {
-                    VStack(spacing: 6) {
-                        Image(systemName: "gauge.with.dots.needle.33percent")
-                            .font(.largeTitle).foregroundStyle(.secondary)
-                        Text("No providers selected").font(.headline)
-                        Text("Choose one from the settings menu.")
-                            .font(.callout).foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 24)
-                } else {
-                    ScrollView {
-                        VStack(spacing: 8) {
-                            ForEach(providerNames.filter { model.enabled.contains($0.id) }, id: \.id) {
-                                id, name in
-                                ProviderCard(
-                                    name: name, id: id,
-                                    provider: model.report?.providers.first { $0.id == id },
-                                    date: context.date, busy: model.busy,
-                                    helperFailed: model.helperError != nil
+                ScrollView {
+                    VStack(spacing: 8) {
+                        ForEach(UsageProvider.all) { option in
+                            ProviderCard(
+                                name: option.name, id: option.id,
+                                provider: option.placeholder == nil
+                                    ? model.report?.providers.first { $0.id == option.id } : nil,
+                                date: context.date, busy: model.busy,
+                                helperFailed: model.helperError != nil,
+                                placeholder: option.placeholder,
+                                showInMenuBar: Binding(
+                                    get: { model.menuBarProviders.contains(option.id) },
+                                    set: { model.setMenuBarVisibility($0, for: option.id) }
                                 )
-                            }
+                            )
                         }
                     }
-                    .frame(maxHeight: 460)
-                    .fixedSize(horizontal: false, vertical: true)
                 }
+                .frame(maxHeight: 460)
+                .fixedSize(horizontal: false, vertical: true)
                 if let error = model.loginError {
                     Label(error, systemImage: "person.badge.clock").font(.caption)
                         .foregroundStyle(.secondary).textSelection(.enabled)
@@ -275,20 +280,12 @@ struct UsagePanel: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
-            .disabled(model.busy || model.enabled.isEmpty)
+            .disabled(model.busy)
             .keyboardShortcut("r")
             .help("Refresh now")
             .accessibilityLabel(model.busy ? "Refreshing usage" : "Refresh now")
 
             Menu {
-                Section("Show in menu bar") {
-                    ForEach(providerNames, id: \.id) { id, name in
-                        Toggle(name, isOn: Binding(
-                            get: { model.enabled.contains(id) }, set: { _ in model.toggle(id) }
-                        ))
-                    }
-                }
-                Divider()
                 Toggle("Launch at login", isOn: Binding(
                     get: { model.launchAtLogin }, set: { model.setLogin($0) }
                 ))

@@ -2,7 +2,20 @@ import AppKit
 import ServiceManagement
 import SwiftUI
 
-let providerNames: [(id: String, name: String)] = [("codex", "Codex"), ("claude", "Claude Code"), ("grok", "Grok")]
+struct UsageProvider: Identifiable {
+    let id: String
+    let name: String
+    var placeholder: String? = nil
+
+    static let all = [
+        UsageProvider(id: "codex", name: "Codex"),
+        UsageProvider(id: "claude", name: "Claude Code"),
+        UsageProvider(id: "grok", name: "Grok"),
+        UsageProvider(id: "antigravity", name: "Antigravity",
+                      placeholder: "Waiting for Antigravity to report usage over ACP."),
+    ]
+    static let polledIDs = all.filter { $0.placeholder == nil }.map(\.id)
+}
 
 @MainActor
 final class UsageModel: ObservableObject {
@@ -11,13 +24,13 @@ final class UsageModel: ObservableObject {
     @Published var busy = false
     @Published var helperError: String?
     @Published var loginError: String?
-    @Published var enabled: [String] {
-        didSet { defaults.set(enabled, forKey: "providers") }
+    // Preserve choices from the previous "Show in menu bar" settings menu.
+    @Published private(set) var menuBarProviders: [String] {
+        didSet { defaults.set(menuBarProviders, forKey: "providers") }
     }
     @Published var launchAtLogin = SMAppService.mainApp.status == .enabled
     private var timer: Timer?
-    private var queuedRefresh = false
-    private var queuedForce = false
+    private var queuedForcedRefresh = false
     private let defaults: UserDefaults
     private let reader: @Sendable (URL, [String], Bool) throws -> UsageReport
 
@@ -27,9 +40,8 @@ final class UsageModel: ObservableObject {
          }) {
         self.defaults = defaults
         self.reader = reader
-        let saved = defaults.stringArray(forKey: "providers")
-        enabled = saved.map { ids in providerNames.map(\.id).filter { ids.contains($0) } }
-            ?? providerNames.map(\.id)
+        let saved = defaults.stringArray(forKey: "providers") ?? UsageProvider.polledIDs
+        menuBarProviders = UsageProvider.all.map(\.id).filter { saved.contains($0) }
         syncLogin()
         guard startPolling else { return }
         refresh()
@@ -48,20 +60,20 @@ final class UsageModel: ObservableObject {
         ) { [weak self] _ in Task { @MainActor in self?.refresh() } }
     }
 
-    func toggle(_ id: String) {
-        enabled = enabled.contains(id) ? enabled.filter { $0 != id } : enabled + [id]
-        if busy { queuedRefresh = true } else { refresh() }
+    func setMenuBarVisibility(_ shown: Bool, for id: String) {
+        guard UsageProvider.all.contains(where: { $0.id == id }),
+              menuBarProviders.contains(id) != shown else { return }
+        if shown { menuBarProviders.append(id) }
+        else { menuBarProviders.removeAll { $0 == id } }
     }
 
     func refresh(force: Bool = false) {
         guard !busy else {
-            if force { queuedRefresh = true; queuedForce = true }
+            if force { queuedForcedRefresh = true }
             return
         }
         displayDate = Date()
-        guard !enabled.isEmpty else { report = nil; helperError = nil; return }
         busy = true
-        let ids = enabled
         guard let resources = Bundle.main.resourceURL else {
             busy = false
             helperError = "App resources are missing. Reinstall AI Usage."
@@ -69,7 +81,7 @@ final class UsageModel: ObservableObject {
         }
         let reader = self.reader
         DispatchQueue.global(qos: .utility).async {
-            let result = Result { try reader(resources, ids, force) }
+            let result = Result { try reader(resources, UsageProvider.polledIDs, force) }
             DispatchQueue.main.async {
                 self.busy = false
                 switch result {
@@ -78,11 +90,9 @@ final class UsageModel: ObservableObject {
                     self.helperError = nil
                 case .failure(let error): self.helperError = error.localizedDescription
                 }
-                if self.queuedRefresh {
-                    let force = self.queuedForce
-                    self.queuedRefresh = false
-                    self.queuedForce = false
-                    self.refresh(force: force)
+                if self.queuedForcedRefresh {
+                    self.queuedForcedRefresh = false
+                    self.refresh(force: true)
                 }
             }
         }
@@ -109,24 +119,26 @@ final class UsageModel: ObservableObject {
         launchAtLogin = SMAppService.mainApp.status == .enabled
     }
 
-    /// One menu bar slot per enabled provider, in a fixed order so failures never shift the others.
+    /// Keep selected providers in a fixed order so failures never shift the other slots.
     func menuEntries(at date: Date) -> [MenuEntry] {
-        providerNames.filter { enabled.contains($0.id) }.map { id, name in
-            let provider = report?.providers.first { $0.id == id }
+        UsageProvider.all.filter { menuBarProviders.contains($0.id) }.map { option in
+            let provider = option.placeholder == nil
+                ? report?.providers.first { $0.id == option.id } : nil
             let primary = provider?.primary(at: date)
             return MenuEntry(
-                id: id, name: name, usedPercent: primary?.usedPercent,
+                id: option.id, name: option.name, usedPercent: primary?.usedPercent,
                 nearLimit: provider?.nearLimit(at: date) == true,
                 // A failed refresh leaves the previous reading on screen; say so.
                 stale: primary != nil && (provider?.stale == true || helperError != nil),
-                pending: provider == nil && busy
+                pending: option.placeholder == nil && provider == nil && busy,
+                placeholder: option.placeholder
             )
         }
     }
 
     func accessibilitySummary(at date: Date) -> String {
         let entries = menuEntries(at: date)
-        guard !entries.isEmpty else { return "AI Usage. No providers selected." }
+        guard !entries.isEmpty else { return "AI Usage. No providers shown in the menu bar." }
         return "AI Usage. " + entries.map(\.spokenSummary).joined(separator: ". ") + "."
     }
 }
@@ -138,6 +150,7 @@ struct MenuEntry: Equatable {
     let nearLimit: Bool
     let stale: Bool
     let pending: Bool
+    let placeholder: String?
 
     var percentText: String {
         if let usedPercent { return "\(Int(usedPercent.rounded()))%" }
@@ -145,9 +158,10 @@ struct MenuEntry: Equatable {
     }
 
     var spokenSummary: String {
+        if let placeholder { return placeholder }
         guard let usedPercent else { return "\(name) " + (pending ? "loading" : "unavailable") }
         return "\(name) \(Int(usedPercent.rounded())) percent used"
-            + (nearLimit ? ", a limit is above 85 percent" : "")
+            + (nearLimit ? ", a limit is at or above 85 percent" : "")
             + (stale ? ", last reading" : "")
     }
 }

@@ -19,47 +19,46 @@ PlasmoidItem {
     property bool busy: false
     property double clockNow: Date.now()
 
-    readonly property var enabledProviders: {
-        let enabled = [];
-        if (Plasmoid.configuration.showCodex)
-            enabled.push({id: "codex", displayName: "Codex"});
-        if (Plasmoid.configuration.showClaude)
-            enabled.push({id: "claude", displayName: "Claude Code"});
-        if (Plasmoid.configuration.showGrok)
-            enabled.push({id: "grok", displayName: "Grok"});
-        return enabled;
-    }
-    readonly property var providers: enabledProviders.map(function(provider) {
-        const reading = root.readings.find(reading => reading.id === provider.id);
-        if (reading)
-            return reading;
-        return Object.assign({}, provider, {hasReading: false, ok: false, stale: false,
-            windows: [], bankedResets: null, primaryUsedPercent: null,
-            error: root.loaded ? i18n("No usage reading available") : ""});
+    readonly property var enabledProviders: [
+        {id: "codex", displayName: "Codex", panelKey: "showCodexInPanel", enabled: Plasmoid.configuration.showCodex},
+        {id: "claude", displayName: "Claude Code", panelKey: "showClaudeInPanel", enabled: Plasmoid.configuration.showClaude},
+        {id: "grok", displayName: "Grok", panelKey: "showGrokInPanel", enabled: Plasmoid.configuration.showGrok}
+    ].filter(provider => provider.enabled)
+
+    readonly property var providers: enabledProviders.concat({
+        id: "antigravity",
+        displayName: "Antigravity",
+        panelKey: "showAntigravityInPanel",
+        placeholderText: i18n("Waiting for Antigravity to report usage over ACP.")
     })
+    readonly property var panelProviders: providers
+        .filter(provider => Plasmoid.configuration[provider.panelKey])
+        .map(provider => root.providerUsage(provider))
+
     property string helperError: ""
     property bool loaded: false
 
     readonly property string helper: Plasmoid.configuration.helperCommand
     readonly property int pollMinutes: Math.max(1, Plasmoid.configuration.pollIntervalMinutes)
 
-    readonly property bool anyProviderEnabled: Plasmoid.configuration.showCodex || Plasmoid.configuration.showClaude || Plasmoid.configuration.showGrok
-
-    readonly property string providerFlags: {
-        let flags = "";
-        if (Plasmoid.configuration.showCodex)
-            flags += " --provider codex";
-        if (Plasmoid.configuration.showClaude)
-            flags += " --provider claude";
-        if (Plasmoid.configuration.showGrok)
-            flags += " --provider grok";
-        return flags;
-    }
+    readonly property bool anyProviderEnabled: enabledProviders.length > 0
+    readonly property string providerFlags: enabledProviders.map(provider => " --provider " + provider.id).join("")
 
     // Keep the TTL just below the poll interval so each scheduled check refreshes
     // expired readings while sharing recent results with other helper invocations.
     readonly property string pollCommand: helper + providerFlags + " --ttl " + Math.max(30, pollMinutes * 60 - 10)
     readonly property string refreshCommand: helper + providerFlags + " --refresh"
+
+    function providerUsage(provider) {
+        if (provider.placeholderText)
+            return provider;
+        const reading = root.readings.find(reading => reading.id === provider.id);
+        if (reading)
+            return reading;
+        return Object.assign({}, provider, {hasReading: false, ok: false, stale: false,
+            windows: [], bankedResets: null, primaryUsedPercent: null,
+            error: root.loaded ? i18n("No usage reading available") : ""});
+    }
 
     function usageColor(percent) {
         if (percent >= 85)
@@ -71,7 +70,7 @@ PlasmoidItem {
 
     // Provider marks are bundled per id; anything unrecognized simply gets no mark.
     function providerMark(providerId) {
-        if (providerId === "codex" || providerId === "claude" || providerId === "grok")
+        if (providerId === "codex" || providerId === "claude" || providerId === "grok" || providerId === "antigravity")
             // Kirigami.Icon looks a file's base name up in the icon theme first, so a plain
             // "claude.svg" draws the theme's Claude app icon (MacTahoe ships one) as a square.
             return Qt.resolvedUrl("../icons/aiusage-mark-" + providerId + ".svg");
@@ -118,15 +117,9 @@ PlasmoidItem {
         return i18n("Resets in %1", durationText(minutes));
     }
 
-    function providerWarning(provider) {
-        if (!provider.hasReading)
-            return "";
-        return provider.windows.filter(window => window.usedPercent >= 85).map(function(window) {
-            return i18n("%1: %2% used", window.label, Math.round(window.usedPercent));
-        }).join("\n");
-    }
-
     function providerSummary(provider) {
+        if (provider.placeholderText)
+            return provider.displayName + "\n" + provider.placeholderText;
         if (!provider.hasReading)
             return !root.loaded ? i18n("%1: loading", provider.displayName)
                 : i18n("%1: unavailable. %2", provider.displayName, provider.error || "");
@@ -238,15 +231,13 @@ PlasmoidItem {
     toolTipSubText: {
         if (root.helperError !== "")
             return root.helperError;
-        if (!root.anyProviderEnabled)
-            return i18n("No providers selected");
-        if (!root.loaded)
-            return i18n("Loading…");
-        return root.providers.map(provider => root.providerSummary(provider)).join("\n\n");
+        if (root.panelProviders.length === 0)
+            return i18n("No providers shown in the panel");
+        return root.panelProviders.map(provider => root.providerSummary(provider)).join("\n\n");
     }
 
     Plasmoid.status: {
-        for (const provider of root.providers) {
+        for (const provider of root.panelProviders) {
             if (provider.hasReading && !provider.stale && provider.maxUsedPercent >= 85)
                 return PlasmaCore.Types.NeedsAttentionStatus;
         }
