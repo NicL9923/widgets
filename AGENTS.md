@@ -1,7 +1,8 @@
 # Agent Instructions
 
 KDE Plasma 6 widgets, one per folder. Each folder is self-contained: its own applet package,
-helper, tests, install script, README, and `AGENTS.md` with widget-specific rules.
+helper (where needed), tests, install script, README, and widget-specific `AGENTS.md` where
+present (`ai-usage/AGENTS.md`).
 
 | Folder | Widget | Data source |
 | --- | --- | --- |
@@ -16,18 +17,9 @@ working.
 
 ## Project workflow
 
-- Before creating a PR, run an independent review of the full branch diff at high reasoning
-  effort, following `.github/agents/review-agent.md`, and address the findings first. Skip
-  this only for typo- or few-line-level changes.
-- Always call out in the PR description:
-  - What the review agent found and how each finding was addressed, or why it was not.
-  - Any product or high-level engineering decisions made in the branch, and whether each was
-    made by "human" or "agent".
-- Always web-search for the latest information when researching package versions, docs,
-  tooling, APIs, or hardware protocols. Never rely on training knowledge for facts about the
-  outside world that may have changed.
-- Delegate exploration, log parsing, and screenshot-heavy verification to subagents that
-  return organized findings rather than raw dumps.
+- Before opening a PR (skip only for typo-level changes), run an independent review of the
+  full branch diff following `.github/agents/review-agent.md` using the global model policy
+  in `AGENTS.global.md`, and address findings first.
 
 ## Shared standards
 
@@ -66,4 +58,3 @@ working.
 - Verify visually with `.agents/tools/plasma-capture.sh`, which captures a temporary copy of
   any applet's popup or panel item without touching the installed one. Then check
   `journalctl --user --since "-5 min" | grep -i qml` for load errors.
-- `CLAUDE.md` is a symlink to this file.

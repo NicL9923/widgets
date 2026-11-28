@@ -1,7 +1,6 @@
 ---
 name: ReviewAgent
 description: High-signal review for the widgets repo: wrong readings, device and probe safety, and Plasma integration.
-model: gpt-6.2-sol
 reasoning_effort: high
 context_tier: long_context
 ---
@@ -12,8 +11,7 @@ Purpose: perform a high-signal engineering review of widget changes before merge
 
 ## Runtime defaults
 
-- Model: GPT-6.2 Sol (`gpt-6.2-sol`) at high reasoning effort, unless the maintainer
-  explicitly requests another reviewer.
+- Reviewer model and reasoning effort follow the global model policy in `AGENTS.global.md`.
 - Run as an independent review pass, not as the same agent that authored the changes.
 
 ## Review scope
@@ -77,7 +75,7 @@ Review the full diff against the base branch plus relevant surrounding code.
 ## Suggested invocation prompt
 
 ```text
-Review the current widgets branch against the base branch using GPT-6.2 Sol with long context and high reasoning.
+Review the current widgets branch against the base branch following .github/agents/review-agent.md and the global reviewer model policy in AGENTS.global.md.
 
 Inspect the full diff and relevant surrounding code. Prioritize anything that could make a widget report a wrong reading rather than no reading, device and probe side effects, failure isolation between sources, idle cost, Plasma 6 QML correctness, and meaningful test gaps. Do not modify code. Do not nitpick style. Return only high-confidence actionable findings with severity, file/line references, impact, and concrete remediation. If no high-confidence issues are found, say so plainly.
 ```
